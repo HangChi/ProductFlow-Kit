@@ -1,0 +1,102 @@
+{
+  "id": "knowledge-base",
+  "name": "Knowledge Base",
+  "description": "A knowledge base starter for help centers, internal docs, collections, and search feedback loops.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "file-storage", "audit-log"],
+  "defaultModules": ["auth", "rbac", "file-storage", "audit-log"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow Knowledge",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "next",
+    "metrics": [
+      { "label": "Articles", "value": "312", "change": "42 internal only" },
+      { "label": "Searches", "value": "18.4k", "change": "This month" },
+      { "label": "Solved rate", "value": "68%", "change": "+6.3% vs last month" },
+      { "label": "Gaps", "value": "27", "change": "Need new docs" }
+    ],
+    "resources": [
+      {
+        "id": "kbArticles",
+        "title": "Knowledge articles",
+        "navLabel": "Articles",
+        "description": "Maintain public help docs and internal operational knowledge.",
+        "route": "/knowledge/articles",
+        "apiPath": "/api/knowledge/articles",
+        "javaPackage": "knowledge",
+        "className": "KnowledgeArticle",
+        "table": "kb_articles",
+        "actionLabel": "New article",
+        "fields": [
+          { "name": "title", "label": "Title" },
+          { "name": "collection", "label": "Collection" },
+          { "name": "status", "label": "Status" },
+          { "name": "visibility", "label": "Visibility" }
+        ],
+        "samples": [
+          { "title": "Getting started", "collection": "Onboarding", "status": "Published", "visibility": "Public" },
+          { "title": "Billing FAQ", "collection": "Account", "status": "Review", "visibility": "Public" },
+          { "title": "Incident runbook", "collection": "Operations", "status": "Published", "visibility": "Internal" }
+        ]
+      },
+      {
+        "id": "kbCollections",
+        "title": "Collections",
+        "navLabel": "Collections",
+        "description": "Organize docs into help center categories and internal spaces.",
+        "route": "/knowledge/collections",
+        "apiPath": "/api/knowledge/collections",
+        "javaPackage": "knowledge",
+        "className": "KnowledgeCollection",
+        "table": "kb_collections",
+        "actionLabel": "New collection",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "articles", "label": "Articles" },
+          { "name": "visibility", "label": "Visibility" }
+        ],
+        "samples": [
+          { "name": "Onboarding", "owner": "Ada Chen", "articles": "24", "visibility": "Public" },
+          { "name": "Account", "owner": "Ben Miller", "articles": "31", "visibility": "Public" },
+          { "name": "Operations", "owner": "Chris Zhou", "articles": "57", "visibility": "Internal" }
+        ]
+      },
+      {
+        "id": "searchFeedback",
+        "title": "Search feedback",
+        "navLabel": "Search feedback",
+        "description": "Track failed searches, user feedback, and documentation gaps.",
+        "route": "/knowledge/search-feedback",
+        "apiPath": "/api/knowledge/search-feedback",
+        "javaPackage": "knowledge",
+        "className": "SearchFeedback",
+        "table": "kb_search_feedback",
+        "actionLabel": "Create task",
+        "fields": [
+          { "name": "query", "label": "Query" },
+          { "name": "result", "label": "Result" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "priority", "label": "Priority" }
+        ],
+        "samples": [
+          { "query": "SSO setup", "result": "No answer", "owner": "Ada Chen", "priority": "High" },
+          { "query": "invoice export", "result": "Weak match", "owner": "Ben Miller", "priority": "Medium" },
+          { "query": "API limits", "result": "Helpful", "owner": "Chris Zhou", "priority": "Low" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

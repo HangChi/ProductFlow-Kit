@@ -181,6 +181,28 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS content_articles/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS content_calendar_slots/);
   });
+
+  test("generates knowledge-base with docs resources", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "knowledge-app");
+
+    const result = await createProject({
+      appName: "knowledge-app",
+      targetDir,
+      template: "knowledge-base",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "knowledge-base");
+    assert.deepEqual(result.modules, ["auth", "rbac", "file-storage", "audit-log"]);
+    assertFile(targetDir, "frontend/app/knowledge/articles/page.tsx");
+    assertFile(targetDir, "frontend/app/knowledge/search-feedback/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/knowledge/KnowledgeArticleController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS kb_articles/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS kb_search_feedback/);
+  });
 });
 
 function makeTempRoot() {
