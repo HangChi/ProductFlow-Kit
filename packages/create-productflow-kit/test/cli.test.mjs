@@ -4,7 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, test } from "node:test";
 import { parseArgs } from "../src/cli.mjs";
-import { createProject, loadTemplateManifests } from "../src/generator.mjs";
+import {
+  addModuleToProject,
+  createProject,
+  formatTemplatePreview,
+  getTemplatePreview,
+  loadTemplateManifests,
+} from "../src/generator.mjs";
 
 const createdRoots = [];
 
@@ -26,6 +32,15 @@ describe("CLI parsing", () => {
       "auth,rbac,ai,audit-log",
       "--language",
       "bilingual",
+      "--package-name",
+      "@hangchi/my-ai-app",
+      "--frontend-port=3100",
+      "--backend-port",
+      "8181",
+      "--database-name",
+      "productflow_dev",
+      "--dry-run",
+      "--init-git",
     ]);
 
     assert.equal(parsed.command, "create");
@@ -34,6 +49,24 @@ describe("CLI parsing", () => {
     assert.equal(parsed.data, "mybatis");
     assert.deepEqual(parsed.modules, ["auth", "rbac", "ai", "audit-log"]);
     assert.equal(parsed.language, "bilingual");
+    assert.equal(parsed.packageName, "@hangchi/my-ai-app");
+    assert.equal(parsed.frontendPort, "3100");
+    assert.equal(parsed.backendPort, "8181");
+    assert.equal(parsed.databaseName, "productflow_dev");
+    assert.equal(parsed.dryRun, true);
+    assert.equal(parsed.initGit, true);
+  });
+
+  test("parses preview and add module commands", () => {
+    const preview = parseArgs(["preview", "ai-saas"]);
+    assert.equal(preview.command, "preview");
+    assert.equal(preview.template, "ai-saas");
+
+    const add = parseArgs(["add", "module", "ai", "--project-dir", "my-saas", "--force"]);
+    assert.equal(add.command, "add");
+    assert.equal(add.module, "ai");
+    assert.equal(add.targetDir, "my-saas");
+    assert.equal(add.force, true);
   });
 });
 
@@ -42,6 +75,12 @@ describe("template manifests", () => {
     const ids = loadTemplateManifests().map((template) => template.id);
     assert.equal(ids.includes("ai-saas"), true);
     assert.equal(ids.includes("saas-admin"), true);
+  });
+
+  test("formats template previews", () => {
+    const preview = formatTemplatePreview(getTemplatePreview("ai-saas"));
+    assert.match(preview, /AI SaaS/);
+    assert.match(preview, /Default modules: auth, rbac, ai, audit-log/);
   });
 });
 
@@ -69,6 +108,50 @@ describe("project generation", () => {
     const pom = readFile(targetDir, "backend/pom.xml");
     assert.match(pom, /spring-boot-starter-data-jpa/);
     assert.doesNotMatch(pom, /mybatis-plus-spring-boot3-starter/);
+  });
+
+  test("supports dry-run without writing files", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "dry-app");
+
+    const result = await createProject({
+      appName: "dry-app",
+      targetDir,
+      template: "saas-admin",
+      data: "jpa",
+      dryRun: true,
+    });
+
+    assert.equal(result.dryRun, true);
+    assert.equal(result.files.includes("docker-compose.yml"), true);
+    assert.equal(fs.existsSync(targetDir), false);
+  });
+
+  test("generates custom project configuration", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "custom-app");
+
+    const result = await createProject({
+      appName: "custom-app",
+      targetDir,
+      template: "saas-admin",
+      data: "jpa",
+      packageName: "@hangchi/custom-app",
+      displayName: "Custom Console",
+      frontendPort: "3100",
+      backendPort: "8181",
+      databasePort: "5544",
+      databaseName: "custom_flow",
+      packageManager: "pnpm",
+    });
+
+    assert.equal(result.packageName, "@hangchi/custom-app");
+    assert.equal(result.frontendPort, 3100);
+    assert.match(readFile(targetDir, ".env.example"), /APP_URL=http:\/\/localhost:3100/);
+    assert.match(readFile(targetDir, ".env.example"), /POSTGRES_DB=custom_flow/);
+    assert.match(readFile(targetDir, "docker-compose.yml"), /"8181:8181"/);
+    assert.match(readFile(targetDir, "docker-compose.yml"), /"5544:5432"/);
+    assert.match(readFile(targetDir, "backend/src/main/resources/application.yml"), /SERVER_PORT:8181/);
   });
 
   test("generates ai-saas with MyBatis and AI module", async () => {
@@ -116,6 +199,33 @@ describe("project generation", () => {
     assertFile(targetDir, "frontend/app/email/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/files/FileController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/email/EmailController.java");
+  });
+
+  test("adds AI module to an existing saas-admin project", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "modular-app");
+
+    await createProject({
+      appName: "modular-app",
+      targetDir,
+      template: "saas-admin",
+      data: "jpa",
+      modules: ["auth", "rbac", "audit-log"],
+    });
+
+    const result = await addModuleToProject({
+      targetDir,
+      module: "ai",
+    });
+
+    assert.equal(result.changed, true);
+    assert.equal(result.modules.includes("ai"), true);
+    assertFile(targetDir, "frontend/app/ai/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiChatController.java");
+    assertFile(targetDir, "backend/src/main/resources/db/migration/V2__add_ai.sql");
+
+    const manifest = JSON.parse(readFile(targetDir, "productflow.template.json"));
+    assert.equal(manifest.modules.includes("ai"), true);
   });
 
   test("generates landing-page with lead capture blueprint", async () => {
@@ -247,6 +357,7 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_api_keys/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_webhooks/);
   });
+
 });
 
 function makeTempRoot() {

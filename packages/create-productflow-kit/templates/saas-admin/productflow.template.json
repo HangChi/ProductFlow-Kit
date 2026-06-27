@@ -8,7 +8,7 @@
     "database": "PostgreSQL",
     "runtime": "Docker Compose"
   },
-  "modules": ["auth", "rbac", "file-storage", "email", "audit-log"],
+  "modules": ["auth", "rbac", "ai", "file-storage", "email", "audit-log"],
   "defaultModules": ["auth", "rbac", "audit-log"],
   "requiredModules": [],
   "variables": {

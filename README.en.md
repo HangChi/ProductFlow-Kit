@@ -1,15 +1,46 @@
 # ProductFlow Kit
 
-Open-source starter templates for SaaS, admin, and AI applications.
+Open-source starter templates for SaaS, admin, AI applications, and enterprise product prototypes.
 
-ProductFlow Kit is designed to generate ready-to-run product foundations rather than disconnected demos. The first release focuses on `React/Next.js + Spring Boot + PostgreSQL + Docker Compose`, with a zero-dependency CLI that generates clean starter projects.
+ProductFlow Kit generates ready-to-run product foundations rather than disconnected demos. The current stack focuses on `React/Next.js + Spring Boot + PostgreSQL + Docker Compose`, with a zero-dependency CLI that creates clean standalone projects.
 
 [中文 README](./README.md)
+
+## Features
+
+- Generate runnable projects instead of copying scattered snippets.
+- Preview templates, run dry-runs, create interactively, and add modules later.
+- Configure package name, display name, frontend port, backend port, database port, and database name.
+- Optional `git init` and dependency installation.
+- Frontend support for Next.js and Vue 3 + Vite.
+- Backend default: Spring Boot, Java 21, PostgreSQL.
+- Data layers: `JPA + Flyway` or `MyBatis-Plus + Flyway`.
+- Optional modules: `auth`, `rbac`, `ai`, `file-storage`, `email`, `audit-log`.
+
+## Templates
+
+| Template | Use case | Frontend | Backend |
+| --- | --- | --- | --- |
+| `saas-admin` | SaaS consoles, admin panels, internal tools | Next.js | Spring Boot |
+| `ai-saas` | AI chat, prompt management, call history, usage dashboards | Next.js | Spring Boot |
+| `landing-page` | Marketing sites, pricing signals, lead capture | Next.js | Spring Boot |
+| `crm-admin` | Accounts, deals, sales pipeline, follow-ups | Next.js | Spring Boot |
+| `content-platform` | Articles, collections, publishing calendars | Next.js | Spring Boot |
+| `knowledge-base` | Help centers, docs, search feedback | Next.js | Spring Boot |
+| `workflow-approval` | Requests, approval queues, approval rules | Next.js | Spring Boot |
+| `spring-api` | Pure Spring Boot API services | None | Spring Boot |
+| `vue-admin` | Vue 3 + Vite admin applications | Vue 3 + Vite | Spring Boot |
 
 ## Quick Start
 
 ```bash
 node packages/create-productflow-kit/bin/productflow.mjs list
+```
+
+Preview a template:
+
+```bash
+node packages/create-productflow-kit/bin/productflow.mjs preview ai-saas
 ```
 
 Generate a SaaS/Admin app:
@@ -18,16 +49,28 @@ Generate a SaaS/Admin app:
 node packages/create-productflow-kit/bin/productflow.mjs create my-saas --template saas-admin --data jpa --modules auth,rbac,audit-log
 ```
 
-Generate an AI SaaS app:
+Generate a CRM app:
 
 ```bash
-node packages/create-productflow-kit/bin/productflow.mjs create my-ai-app --template ai-saas --data mybatis --modules auth,rbac,ai,audit-log
+node packages/create-productflow-kit/bin/productflow.mjs create my-crm --template crm-admin --data jpa
+```
+
+Generate a pure backend API:
+
+```bash
+node packages/create-productflow-kit/bin/productflow.mjs create my-api --template spring-api --data jpa
+```
+
+Generate a Vue Admin app:
+
+```bash
+node packages/create-productflow-kit/bin/productflow.mjs create my-vue-admin --template vue-admin --data mybatis
 ```
 
 Run the generated project:
 
 ```bash
-cd my-ai-app
+cd my-saas
 cp .env.example .env
 docker compose up --build
 ```
@@ -35,19 +78,6 @@ docker compose up --build
 Frontend: http://localhost:3000
 
 Backend: http://localhost:8080
-
-## Templates
-
-- `saas-admin`: login, users, roles, dashboard, settings, tables, forms, prototype routes, and audit logs.
-- `ai-saas`: SaaS/Admin plus AI chat, prompt management, call history, usage cards, and a mock AI provider.
-
-## Stack
-
-- Frontend: Next.js, React, TypeScript, Tailwind CSS.
-- Backend: Spring Boot, Java 21.
-- Database: PostgreSQL.
-- Data layers: JPA + Flyway, or MyBatis-Plus + Flyway.
-- Runtime: Docker Compose.
 
 ## Development
 

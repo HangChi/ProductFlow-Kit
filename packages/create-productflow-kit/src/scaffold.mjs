@@ -11,7 +11,7 @@ export function buildProjectFiles(context) {
     file("README.md", generatedReadmeEn(context)),
     file("README.zh-CN.md", generatedReadmeZh(context)),
     file("backend/pom.xml", backendPom(context)),
-    file("backend/Dockerfile", backendDockerfile()),
+    file("backend/Dockerfile", backendDockerfile(context)),
     file(`${JAVA_ROOT}/Application.java`, backendApplication()),
     file(`${JAVA_ROOT}/common/ApiResponse.java`, backendApiResponse()),
     file(`${JAVA_ROOT}/users/UserController.java`, backendUserController()),
@@ -37,29 +37,39 @@ export function buildProjectFiles(context) {
 
   if (has(context, "rbac")) {
     files.push(file(`${JAVA_ROOT}/roles/RoleController.java`, backendRoleController()));
-    files.push(file("frontend/app/roles/page.tsx", frontendRolesPage()));
+    if (frontendKind(context) === "next") {
+      files.push(file("frontend/app/roles/page.tsx", frontendRolesPage()));
+    }
   }
 
   if (has(context, "ai")) {
-    files.push(file("frontend/app/ai/page.tsx", frontendAiPage()));
     files.push(file(`${JAVA_ROOT}/ai/AiChatController.java`, backendAiChatController()));
     files.push(file(`${JAVA_ROOT}/ai/AiProvider.java`, backendAiProvider()));
     files.push(file(`${JAVA_ROOT}/ai/MockAiProvider.java`, backendMockAiProvider()));
+    if (frontendKind(context) === "next") {
+      files.push(file("frontend/app/ai/page.tsx", frontendAiPage()));
+    }
   }
 
   if (has(context, "audit-log")) {
     files.push(file(`${JAVA_ROOT}/audit/AuditLogController.java`, backendAuditLogController()));
-    files.push(file("frontend/app/audit/page.tsx", frontendAuditPage()));
+    if (frontendKind(context) === "next") {
+      files.push(file("frontend/app/audit/page.tsx", frontendAuditPage()));
+    }
   }
 
   if (has(context, "file-storage")) {
     files.push(file(`${JAVA_ROOT}/files/FileController.java`, backendFileController()));
-    files.push(file("frontend/app/files/page.tsx", frontendFilesPage()));
+    if (frontendKind(context) === "next") {
+      files.push(file("frontend/app/files/page.tsx", frontendFilesPage()));
+    }
   }
 
   if (has(context, "email")) {
     files.push(file(`${JAVA_ROOT}/email/EmailController.java`, backendEmailController()));
-    files.push(file("frontend/app/email/page.tsx", frontendEmailPage()));
+    if (frontendKind(context) === "next") {
+      files.push(file("frontend/app/email/page.tsx", frontendEmailPage()));
+    }
   }
 
   if (context.dataLayer === "jpa") {
@@ -200,6 +210,11 @@ function generatedManifest(context) {
       packageName: context.packageName,
       javaPackage: JAVA_PACKAGE,
       language: context.language,
+      frontendPort: context.frontendPort,
+      backendPort: context.backendPort,
+      databasePort: context.databasePort,
+      databaseName: context.databaseName,
+      packageManager: context.packageManager,
     },
     postInstall: context.template.postInstall,
   });
@@ -208,15 +223,16 @@ function generatedManifest(context) {
 function envExample(context) {
   return text`
 APP_NAME=${context.displayName}
-APP_URL=http://localhost:3000
-API_URL=http://localhost:8080
+APP_URL=http://localhost:${context.frontendPort}
+API_URL=http://localhost:${context.backendPort}
 
-POSTGRES_DB=productflow
+POSTGRES_DB=${context.databaseName}
 POSTGRES_USER=productflow
 POSTGRES_PASSWORD=productflow
-DATABASE_URL=jdbc:postgresql://localhost:5432/productflow
+DATABASE_URL=jdbc:postgresql://localhost:${context.databasePort}/${context.databaseName}
 DATABASE_USERNAME=productflow
 DATABASE_PASSWORD=productflow
+SERVER_PORT=${context.backendPort}
 
 JWT_SECRET=replace-with-a-long-random-secret
 AI_PROVIDER=mock
@@ -275,23 +291,23 @@ function dockerCompose(context) {
     build:
       context: ./frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      VITE_API_URL: http://localhost:8080
+      NEXT_PUBLIC_API_URL: http://localhost:${context.backendPort}
+      VITE_API_URL: http://localhost:${context.backendPort}
     depends_on:
       - backend
     ports:
-      - "3000:3000"`;
+      - "${context.frontendPort}:${context.frontendPort}"`;
 
   return text`
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: \${POSTGRES_DB:-productflow}
+      POSTGRES_DB: \${POSTGRES_DB:-${context.databaseName}}
       POSTGRES_USER: \${POSTGRES_USER:-productflow}
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:-productflow}
     ports:
-      - "5432:5432"
+      - "${context.databasePort}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -304,7 +320,8 @@ services:
     build:
       context: ./backend
     environment:
-      DATABASE_URL: jdbc:postgresql://postgres:5432/\${POSTGRES_DB:-productflow}
+      SERVER_PORT: ${context.backendPort}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/\${POSTGRES_DB:-${context.databaseName}}
       DATABASE_USERNAME: \${POSTGRES_USER:-productflow}
       DATABASE_PASSWORD: \${POSTGRES_PASSWORD:-productflow}
       AI_PROVIDER: \${AI_PROVIDER:-mock}
@@ -313,7 +330,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "${context.backendPort}:${context.backendPort}"
 ${frontendService}
 
 volumes:
@@ -349,9 +366,9 @@ cp .env.example .env
 docker compose up --build
 \`\`\`
 
-Frontend: http://localhost:3000
+Frontend: http://localhost:${context.frontendPort}
 
-Backend: http://localhost:8080
+Backend: http://localhost:${context.backendPort}
 
 ## Useful Commands
 
@@ -400,9 +417,9 @@ cp .env.example .env
 docker compose up --build
 \`\`\`
 
-前端：http://localhost:3000
+前端：http://localhost:${context.frontendPort}
 
-后端：http://localhost:8080
+后端：http://localhost:${context.backendPort}
 
 ## 常用命令
 
@@ -431,9 +448,9 @@ function frontendPackageJson(context) {
       private: true,
       type: "module",
       scripts: {
-        dev: "vite --host 0.0.0.0",
+        dev: `vite --host 0.0.0.0 --port ${context.frontendPort}`,
         build: "vue-tsc --noEmit && vite build",
-        preview: "vite preview --host 0.0.0.0 --port 3000",
+        preview: `vite preview --host 0.0.0.0 --port ${context.frontendPort}`,
         test: "node --test tests/*.test.mjs",
       },
       dependencies: {
@@ -454,9 +471,9 @@ function frontendPackageJson(context) {
     private: true,
     type: "module",
     scripts: {
-      dev: "next dev",
+      dev: `next dev -p ${context.frontendPort}`,
       build: "next build",
-      start: "next start",
+      start: `next start -p ${context.frontendPort}`,
       lint: "next lint",
       test: "node --test tests/*.test.mjs",
     },
@@ -826,7 +843,7 @@ export default function SettingsPage() {
         <CardContent>
           <form className="grid max-w-2xl gap-4">
             <Input label="Workspace name" defaultValue="${context.displayName}" />
-            <Input label="API base URL" defaultValue="http://localhost:8080" />
+            <Input label="API base URL" defaultValue="http://localhost:${context.backendPort}" />
             <Input label="Enabled modules" defaultValue="${context.modules.join(", ")}" />
             <div>
               <Button type="button">Save settings</Button>
@@ -1453,7 +1470,7 @@ export default defineConfig({
 
 function frontendApi(context) {
   return text`
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:${context.backendPort}";
 
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(\`\${API_URL}\${path}\`, {
@@ -1608,8 +1625,8 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-EXPOSE 3000
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+EXPOSE ${context.frontendPort}
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "${context.frontendPort}"]
 `;
   }
 
@@ -1625,7 +1642,7 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-EXPOSE 3000
+EXPOSE ${context.frontendPort}
 CMD ["npm", "run", "start"]
 `;
 }
@@ -1711,7 +1728,7 @@ function dependency(groupId, artifactId, version, scope) {
     .join("\n");
 }
 
-function backendDockerfile() {
+function backendDockerfile(context) {
   return text`
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
@@ -1722,7 +1739,7 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar app.jar
-EXPOSE 8080
+EXPOSE ${context.backendPort}
 ENTRYPOINT ["java", "-jar", "app.jar"]
 `;
 }
@@ -2252,13 +2269,13 @@ mybatis-plus:
 
   return text`
 server:
-  port: 8080
+  port: \${SERVER_PORT:${context.backendPort}}
 
 spring:
   application:
     name: ${context.packageName}
   datasource:
-    url: \${DATABASE_URL:jdbc:postgresql://localhost:5432/productflow}
+    url: \${DATABASE_URL:jdbc:postgresql://localhost:${context.databasePort}/${context.databaseName}}
     username: \${DATABASE_USERNAME:productflow}
     password: \${DATABASE_PASSWORD:productflow}
   flyway:
