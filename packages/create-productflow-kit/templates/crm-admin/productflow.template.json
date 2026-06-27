@@ -1,0 +1,102 @@
+{
+  "id": "crm-admin",
+  "name": "CRM Admin",
+  "description": "A CRM operations starter with accounts, deals, pipeline tracking, and activity follow-up screens.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "email", "audit-log"],
+  "defaultModules": ["auth", "rbac", "email", "audit-log"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow CRM",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "next",
+    "metrics": [
+      { "label": "Pipeline", "value": "$1.2M", "change": "Weighted forecast" },
+      { "label": "Accounts", "value": "428", "change": "36 strategic" },
+      { "label": "Win rate", "value": "31%", "change": "+4.1% this quarter" },
+      { "label": "Follow-ups", "value": "74", "change": "18 due today" }
+    ],
+    "resources": [
+      {
+        "id": "accounts",
+        "title": "Accounts",
+        "navLabel": "Accounts",
+        "description": "Track company profiles, ownership, lifecycle stage, and health.",
+        "route": "/crm/accounts",
+        "apiPath": "/api/crm/accounts",
+        "javaPackage": "crm",
+        "className": "Account",
+        "table": "crm_accounts",
+        "actionLabel": "New account",
+        "fields": [
+          { "name": "company", "label": "Company" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "stage", "label": "Stage" },
+          { "name": "health", "label": "Health" }
+        ],
+        "samples": [
+          { "company": "Northstar Labs", "owner": "Ada Chen", "stage": "Expansion", "health": "green" },
+          { "company": "Atlas Supply", "owner": "Ben Miller", "stage": "Onboarding", "health": "yellow" },
+          { "company": "Orbit Systems", "owner": "Chris Zhou", "stage": "Renewal", "health": "green" }
+        ]
+      },
+      {
+        "id": "deals",
+        "title": "Deals",
+        "navLabel": "Deals",
+        "description": "Manage opportunity value, pipeline stage, close date, and next action.",
+        "route": "/crm/deals",
+        "apiPath": "/api/crm/deals",
+        "javaPackage": "crm",
+        "className": "Deal",
+        "table": "crm_deals",
+        "actionLabel": "New deal",
+        "fields": [
+          { "name": "name", "label": "Deal" },
+          { "name": "amount", "label": "Amount" },
+          { "name": "stage", "label": "Stage" },
+          { "name": "nextStep", "label": "Next step" }
+        ],
+        "samples": [
+          { "name": "Northstar expansion", "amount": "$82k", "stage": "Proposal", "nextStep": "Security review" },
+          { "name": "Atlas onboarding", "amount": "$28k", "stage": "Contract", "nextStep": "Legal approval" },
+          { "name": "Orbit renewal", "amount": "$116k", "stage": "Negotiation", "nextStep": "Exec call" }
+        ]
+      },
+      {
+        "id": "activities",
+        "title": "Activities",
+        "navLabel": "Activities",
+        "description": "Coordinate calls, emails, demos, and customer success follow-ups.",
+        "route": "/crm/activities",
+        "apiPath": "/api/crm/activities",
+        "javaPackage": "crm",
+        "className": "CrmActivity",
+        "table": "crm_activities",
+        "actionLabel": "Log activity",
+        "fields": [
+          { "name": "account", "label": "Account" },
+          { "name": "type", "label": "Type" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "due", "label": "Due" }
+        ],
+        "samples": [
+          { "account": "Northstar Labs", "type": "Demo", "owner": "Ada Chen", "due": "Today" },
+          { "account": "Atlas Supply", "type": "Email", "owner": "Ben Miller", "due": "Tomorrow" },
+          { "account": "Orbit Systems", "type": "QBR", "owner": "Chris Zhou", "due": "Friday" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

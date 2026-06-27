@@ -137,6 +137,28 @@ describe("project generation", () => {
     const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
     assert.match(migration, /CREATE TABLE IF NOT EXISTS landing_leads/);
   });
+
+  test("generates crm-admin with pipeline resources", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "crm-app");
+
+    const result = await createProject({
+      appName: "crm-app",
+      targetDir,
+      template: "crm-admin",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "crm-admin");
+    assert.deepEqual(result.modules, ["auth", "rbac", "email", "audit-log"]);
+    assertFile(targetDir, "frontend/app/crm/accounts/page.tsx");
+    assertFile(targetDir, "frontend/app/crm/deals/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/crm/AccountController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS crm_accounts/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS crm_deals/);
+  });
 });
 
 function makeTempRoot() {
