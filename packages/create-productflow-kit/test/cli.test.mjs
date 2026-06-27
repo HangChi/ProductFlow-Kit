@@ -167,6 +167,10 @@ describe("project generation", () => {
     assert.match(readFile(targetDir, "docker-compose.yml"), /"8181:8181"/);
     assert.match(readFile(targetDir, "docker-compose.yml"), /"5544:5432"/);
     assert.match(readFile(targetDir, "backend/src/main/resources/application.yml"), /SERVER_PORT:8181/);
+
+    const i18n = readFile(targetDir, "frontend/components/i18n.tsx");
+    assert.match(i18n, /const languageMode = "bilingual"/);
+    assert.match(i18n, /export function LanguageToggle/);
   });
 
   test("generates ai-saas with MyBatis and AI module", async () => {
@@ -186,6 +190,7 @@ describe("project generation", () => {
     assert.equal(result.dataLayer, "mybatis");
     assert.deepEqual(result.modules, ["auth", "rbac", "ai", "audit-log"]);
     assertFile(targetDir, "frontend/app/ai/page.tsx");
+    assertFile(targetDir, "frontend/components/i18n.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiCallLogService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiChatController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserMapper.java");
@@ -199,6 +204,10 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_prompts/);
     assert.match(migration, /prompt TEXT NOT NULL/);
     assert.match(migration, /response TEXT NOT NULL/);
+
+    const i18n = readFile(targetDir, "frontend/components/i18n.tsx");
+    assert.match(i18n, /const languageMode = "zh"/);
+    assert.match(i18n, /const defaultLanguage = "zh"/);
   });
 
   test("adds optional file-storage and email modules", async () => {

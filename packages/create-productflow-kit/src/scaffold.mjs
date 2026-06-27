@@ -147,6 +147,7 @@ function nextFrontendFiles(context) {
     file("frontend/app/settings/page.tsx", frontendSettingsPage(context)),
     file("frontend/app/users/page.tsx", frontendUsersPage(context)),
     file("frontend/components/app-shell.tsx", frontendAppShell(context)),
+    file("frontend/components/i18n.tsx", frontendI18n(context)),
     file("frontend/components/ui/badge.tsx", frontendBadge()),
     file("frontend/components/ui/button.tsx", frontendButton()),
     file("frontend/components/ui/card.tsx", frontendCard()),
@@ -382,6 +383,11 @@ Frontend: http://localhost:${context.frontendPort}
 
 Backend: http://localhost:${context.backendPort}
 
+## Language
+
+- Generated language mode: \`${context.language}\`.
+- Use \`--language zh\`, \`--language en\`, or \`--language bilingual\`. Bilingual frontend projects include an in-app language switch.
+
 ## Useful Commands
 
 \`\`\`bash
@@ -432,6 +438,11 @@ docker compose up --build
 前端：http://localhost:${context.frontendPort}
 
 后端：http://localhost:${context.backendPort}
+
+## 语言
+
+- 当前语言模式：\`${context.language}\`。
+- 可使用 \`--language zh\`、\`--language en\` 或 \`--language bilingual\`。选择 \`bilingual\` 时，前端会生成页面内语言切换。
 
 ## 常用命令
 
@@ -623,6 +634,192 @@ a {
 `;
 }
 
+function frontendDefaultLanguage(context) {
+  return context.language === "en" ? "en" : "zh";
+}
+
+function i18nValue(en, zh = zhText(en)) {
+  return `{ en: ${JSON.stringify(en)}, zh: ${JSON.stringify(zh)} }`;
+}
+
+function i18nNode(en, zh = zhText(en)) {
+  return `<I18nText value={${i18nValue(en, zh)}} />`;
+}
+
+function i18nProp(en, zh = zhText(en)) {
+  return `{${i18nValue(en, zh)}}`;
+}
+
+function zhText(en) {
+  return zhDictionary()[en] ?? en;
+}
+
+function zhDictionary() {
+  return {
+    "Dashboard": "工作台",
+    "Users": "用户",
+    "Roles": "角色",
+    "AI Chat": "AI 对话",
+    "Audit Logs": "审计日志",
+    "Files": "文件",
+    "Email": "邮件",
+    "Prototype": "原型",
+    "Settings": "设置",
+    "Workspace": "工作区",
+    "Local demo": "本地演示",
+    "AI usage": "AI 用量",
+    "Mock provider calls this week": "本周模拟供应商调用",
+    "Operating rhythm": "运营节奏",
+    "Acquisition": "获客",
+    "Activation": "激活",
+    "Retention": "留存",
+    "Mock workflow lane for product teams.": "面向产品团队的模拟工作流泳道。",
+    "Activity": "动态",
+    "Workspace settings": "工作区设置",
+    "Workspace name": "工作区名称",
+    "API base URL": "API 基础地址",
+    "Enabled modules": "已启用模块",
+    "Save settings": "保存设置",
+    "Invite": "邀请",
+    "Name": "姓名",
+    "Role": "角色",
+    "Status": "状态",
+    "Owner": "所有者",
+    "Admin": "管理员",
+    "Member": "成员",
+    "active": "启用",
+    "invited": "已邀请",
+    "members": "名成员",
+    "AI chat": "AI 对话",
+    "Ask the mock provider to summarize product feedback.": "让模拟供应商总结产品反馈。",
+    "The provider abstraction is ready. Set AI_PROVIDER and API keys in .env.": "供应商抽象已准备好。可在 .env 中设置 AI_PROVIDER 和 API 密钥。",
+    "Message": "消息",
+    "Send": "发送",
+    "Prompt library": "提示词库",
+    "Audit logs": "审计日志",
+    "Files": "文件",
+    "Upload": "上传",
+    "File storage module placeholder. Wire this to S3, R2, OSS, or local storage.": "文件存储模块占位。可接入 S3、R2、OSS 或本地存储。",
+    "Email preview": "邮件预览",
+    "Recipient": "收件人",
+    "Subject": "主题",
+    "Template key": "模板键",
+    "Render preview": "生成预览",
+    "Prompt library": "提示词库",
+    "Feedback summary": "反馈总结",
+    "Condense user feedback into themes and next actions.": "将用户反馈压缩为主题和下一步动作。",
+    "Churn risk": "流失风险",
+    "Explain account health signals and likely churn drivers.": "解释账户健康信号和可能的流失原因。",
+    "Release note": "发布说明",
+    "Turn shipped work into customer-facing release notes.": "把已发布工作转成面向客户的发布说明。",
+    "Workspace settings updated": "工作区设置已更新",
+    "Role policy changed": "角色策略已变更",
+    "Usage report generated": "用量报告已生成",
+    "settings": "设置",
+    "rbac": "权限",
+    "report": "报告",
+    "User invited": "用户已邀请",
+    "Role permissions updated": "角色权限已更新",
+    "AI prompt published": "AI 提示词已发布",
+    "auth": "认证",
+    "ai": "AI",
+    "Yesterday": "昨天",
+    "Discover": "发现",
+    "Map user goals, entry points, and first-run intent.": "梳理用户目标、入口和首次使用意图。",
+    "Operate": "运营",
+    "Model daily workflows across dashboard, users, and roles.": "建模工作台、用户与角色中的日常流程。",
+    "Automate": "自动化",
+    "Attach AI and system actions to repeatable product jobs.": "把 AI 和系统动作接入可重复的产品任务。",
+    "Measure": "衡量",
+    "Review usage, audit logs, and lifecycle metrics.": "查看用量、审计日志和生命周期指标。",
+    "Full workspace and billing access.": "拥有工作区和计费的完整权限。",
+    "Can manage users, roles, and operations.": "可管理用户、角色和运营流程。",
+    "Can use product workflows and AI tools.": "可使用产品流程和 AI 工具。",
+    "Create": "创建",
+    "Vue admin workspace": "Vue 管理工作区",
+    "Dashboard": "工作台",
+    "Settings": "设置",
+    "Revenue": "收入",
+    "Active users": "活跃用户",
+    "Conversion": "转化率",
+    "Open tasks": "待办任务",
+    "+12.5% vs last month": "较上月 +12.5%",
+    "+842 this week": "本周 +842",
+    "Healthy funnel": "漏斗健康",
+    "9 need attention": "9 项需要关注",
+    "Operators": "运营人员",
+    "Jobs": "任务",
+    "Incidents": "事件",
+    "Automation": "自动化",
+    "12 online": "12 人在线",
+    "29 pending": "29 项待处理",
+    "2 urgent": "2 项紧急",
+    "Healthy": "健康",
+    "Accounts": "客户",
+    "Deals": "商机",
+    "Activities": "活动",
+    "Contacts": "联系人",
+    "Pipeline": "销售管道",
+    "Stage": "阶段",
+    "Value": "金额",
+    "Close date": "预计成交",
+    "Owner": "负责人",
+    "New account": "新建客户",
+    "New deal": "新建商机",
+    "Log activity": "记录活动",
+    "Articles": "文章",
+    "Publishing calendar": "发布日历",
+    "Collections": "合集",
+    "Title": "标题",
+    "Channel": "渠道",
+    "Publish date": "发布日期",
+    "Editor": "编辑",
+    "Status": "状态",
+    "New article": "新建文章",
+    "Schedule content": "安排内容",
+    "Create collection": "创建合集",
+    "Knowledge articles": "知识文章",
+    "Search feedback": "搜索反馈",
+    "Help collections": "帮助合集",
+    "Category": "分类",
+    "Question": "问题",
+    "Result quality": "结果质量",
+    "Create article": "新建文章",
+    "Review feedback": "查看反馈",
+    "Approval requests": "审批请求",
+    "Approval rules": "审批规则",
+    "Request": "请求",
+    "Requester": "申请人",
+    "Approver": "审批人",
+    "Policy": "策略",
+    "Priority": "优先级",
+    "Open request": "发起申请",
+    "New rule": "新建规则",
+    "Leads": "线索",
+    "Company": "公司",
+    "Source": "来源",
+    "Plan": "套餐",
+    "New lead": "新建线索",
+    "API keys": "API 密钥",
+    "Webhooks": "Webhook",
+    "Usage events": "用量事件",
+    "Key": "密钥",
+    "Endpoint": "端点",
+    "Event": "事件",
+    "Last used": "最近使用",
+    "Create key": "创建密钥",
+    "Add webhook": "添加 Webhook",
+    "Run job": "运行任务",
+    "Open incident": "创建事件",
+    "Teams": "团队",
+    "Team": "团队",
+    "Coverage": "覆盖范围",
+    "Schedule": "计划",
+    "Incident": "事件",
+    "Severity": "严重级别"
+  };
+}
+
 function frontendLayout(context) {
   return text`
 import type { Metadata } from "next";
@@ -639,7 +836,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="${frontendDefaultLanguage(context) === "zh" ? "zh-CN" : "en"}">
       <body>{children}</body>
     </html>
   );
@@ -647,8 +844,114 @@ export default function RootLayout({
 `;
 }
 
+function frontendI18n(context) {
+  return text`
+"use client";
+
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+
+type Language = "en" | "zh";
+type LanguageMode = Language | "bilingual";
+
+export type LocalizedText = string | { en: string; zh: string };
+
+const languageMode = ${JSON.stringify(context.language)} as LanguageMode;
+const defaultLanguage = ${JSON.stringify(frontendDefaultLanguage(context))} as Language;
+const storageKey = "productflow-language";
+
+const zhDictionary: Record<string, string> = ${JSON.stringify(zhDictionary(), null, 2)};
+
+const LanguageContext = createContext<{
+  language: Language;
+  setLanguage: (language: Language) => void;
+}>({
+  language: defaultLanguage,
+  setLanguage: () => {},
+});
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(defaultLanguage);
+
+  useEffect(() => {
+    if (languageMode !== "bilingual") {
+      return;
+    }
+
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === "en" || stored === "zh") {
+      setLanguageState(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+    document.documentElement.dataset.language = language;
+
+    if (languageMode === "bilingual") {
+      window.localStorage.setItem(storageKey, language);
+    }
+  }, [language]);
+
+  const setLanguage = (nextLanguage: Language) => {
+    setLanguageState(languageMode === "bilingual" ? nextLanguage : defaultLanguage);
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  return useContext(LanguageContext);
+}
+
+export function resolveText(value: LocalizedText, language: Language) {
+  if (typeof value !== "string") {
+    return value[language];
+  }
+
+  return language === "zh" ? zhDictionary[value] ?? value : value;
+}
+
+export function I18nText({ value }: { value: LocalizedText }) {
+  const { language } = useLanguage();
+  return <>{resolveText(value, language)}</>;
+}
+
+export function LanguageToggle() {
+  const { language, setLanguage } = useLanguage();
+
+  if (languageMode !== "bilingual") {
+    return null;
+  }
+
+  return (
+    <div className="inline-flex rounded-md border border-border bg-white p-1 text-sm shadow-sm" aria-label="Language">
+      {(["en", "zh"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setLanguage(option)}
+          className={
+            "h-8 rounded px-3 font-medium transition " +
+            (language === option ? "bg-accent text-white" : "text-slate-600 hover:bg-surface hover:text-ink")
+          }
+        >
+          {option === "en" ? "EN" : "中文"}
+        </button>
+      ))}
+    </div>
+  );
+}
+`;
+}
+
 function frontendAppShell(context) {
   return text`
+"use client";
+
 import Link from "next/link";
 import {
   Activity,
@@ -661,48 +964,54 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
 
 const navigation = ${navigationItems(context)};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-white/90 px-4 py-5 backdrop-blur lg:block">
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">ProductFlow</p>
-          <h1 className="mt-1 text-xl font-semibold text-ink">${context.displayName}</h1>
-        </div>
-        <nav className="space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-surface hover:text-ink"
-              >
-                <Icon size={18} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-      <main className="lg:pl-64">
-        <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-          <header className="mb-6 flex items-center justify-between border-b border-border pb-4">
-            <div>
-              <p className="text-sm font-medium text-muted">${context.template.name}</p>
-              <h2 className="text-2xl font-semibold text-ink">Workspace</h2>
-            </div>
-            <div className="rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-              Local demo
-            </div>
-          </header>
-          {children}
-        </div>
-      </main>
-    </div>
+    <LanguageProvider>
+      <div className="min-h-screen">
+        <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-white/90 px-4 py-5 backdrop-blur lg:block">
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">ProductFlow</p>
+            <h1 className="mt-1 text-xl font-semibold text-ink">${context.displayName}</h1>
+          </div>
+          <nav className="space-y-1">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-surface hover:text-ink"
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <I18nText value={item.label} />
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+        <main className="lg:pl-64">
+          <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+            <header className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div>
+                <p className="text-sm font-medium text-muted">${context.template.name}</p>
+                <h2 className="text-2xl font-semibold text-ink">${i18nNode("Workspace", "工作区")}</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <LanguageToggle />
+                <div className="rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
+                  ${i18nNode("Local demo", "本地演示")}
+                </div>
+              </div>
+            </header>
+            {children}
+          </div>
+        </main>
+      </div>
+    </LanguageProvider>
   );
 }
 `;
@@ -733,20 +1042,36 @@ function frontendDashboardPage(context) {
     ? text`
         <Card>
           <CardHeader>
-            <CardTitle>AI usage</CardTitle>
+            <CardTitle>${i18nNode("AI usage", "AI 用量")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold text-ink">1.8k</p>
-            <p className="mt-2 text-sm text-muted">Mock provider calls this week</p>
+            <p className="mt-2 text-sm text-muted">${i18nNode("Mock provider calls this week", "本周模拟供应商调用")}</p>
           </CardContent>
         </Card>`
     : "";
 
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activities, metrics } from "@/lib/mock-data";
+
+const stages = [
+  {
+    label: ${i18nValue("Acquisition", "获客")},
+    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+  },
+  {
+    label: ${i18nValue("Activation", "激活")},
+    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+  },
+  {
+    label: ${i18nValue("Retention", "留存")},
+    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+  },
+];
 
 export default function DashboardPage() {
   return (
@@ -755,11 +1080,11 @@ export default function DashboardPage() {
         {metrics.map((metric) => (
           <Card key={metric.label}>
             <CardHeader>
-              <CardTitle>{metric.label}</CardTitle>
+              <CardTitle><I18nText value={metric.label} /></CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-ink">{metric.value}</p>
-              <p className="mt-2 text-sm text-muted">{metric.change}</p>
+              <p className="mt-2 text-sm text-muted"><I18nText value={metric.change} /></p>
             </CardContent>
           </Card>
         ))}
@@ -769,14 +1094,14 @@ ${aiCard}
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Operating rhythm</CardTitle>
+            <CardTitle>${i18nNode("Operating rhythm", "运营节奏")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-3">
-              {["Acquisition", "Activation", "Retention"].map((stage) => (
-                <div key={stage} className="rounded-md border border-border bg-surface p-4">
-                  <p className="text-sm font-semibold text-ink">{stage}</p>
-                  <p className="mt-2 text-sm text-muted">Mock workflow lane for product teams.</p>
+              {stages.map((stage) => (
+                <div key={stage.label.en} className="rounded-md border border-border bg-surface p-4">
+                  <p className="text-sm font-semibold text-ink"><I18nText value={stage.label} /></p>
+                  <p className="mt-2 text-sm text-muted"><I18nText value={stage.description} /></p>
                 </div>
               ))}
             </div>
@@ -785,17 +1110,17 @@ ${aiCard}
 
         <Card>
           <CardHeader>
-            <CardTitle>Activity</CardTitle>
+            <CardTitle>${i18nNode("Activity", "动态")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {activities.map((activity) => (
                 <div key={activity.id} className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-ink">{activity.title}</p>
+                    <p className="text-sm font-medium text-ink"><I18nText value={activity.title} /></p>
                     <p className="text-sm text-muted">{activity.actor}</p>
                   </div>
-                  <Badge>{activity.kind}</Badge>
+                  <Badge><I18nText value={activity.kind} /></Badge>
                 </div>
               ))}
             </div>
@@ -811,6 +1136,7 @@ ${aiCard}
 function frontendPrototypePage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prototypeSteps } from "@/lib/mock-data";
 
@@ -821,10 +1147,10 @@ export default function PrototypePage() {
         {prototypeSteps.map((step) => (
           <Card key={step.title}>
             <CardHeader>
-              <CardTitle>{step.title}</CardTitle>
+              <CardTitle><I18nText value={step.title} /></CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted">{step.description}</p>
+              <p className="text-sm text-muted"><I18nText value={step.description} /></p>
               <div className="mt-4 h-2 rounded-full bg-surface">
                 <div className="h-2 rounded-full bg-accent" style={{ width: step.progress }} />
               </div>
@@ -841,6 +1167,7 @@ export default function PrototypePage() {
 function frontendSettingsPage(context) {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -850,15 +1177,15 @@ export default function SettingsPage() {
     <AppShell>
       <Card>
         <CardHeader>
-          <CardTitle>Workspace settings</CardTitle>
+          <CardTitle>${i18nNode("Workspace settings", "工作区设置")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="grid max-w-2xl gap-4">
-            <Input label="Workspace name" defaultValue="${context.displayName}" />
-            <Input label="API base URL" defaultValue="http://localhost:${context.backendPort}" />
-            <Input label="Enabled modules" defaultValue="${context.modules.join(", ")}" />
+            <Input label=${i18nProp("Workspace name", "工作区名称")} defaultValue="${context.displayName}" />
+            <Input label=${i18nProp("API base URL", "API 基础地址")} defaultValue="http://localhost:${context.backendPort}" />
+            <Input label=${i18nProp("Enabled modules", "已启用模块")} defaultValue="${context.modules.join(", ")}" />
             <div>
-              <Button type="button">Save settings</Button>
+              <Button type="button"><I18nText value=${i18nProp("Save settings", "保存设置")} /></Button>
             </div>
           </form>
         </CardContent>
@@ -872,6 +1199,7 @@ export default function SettingsPage() {
 function frontendUsersPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -883,8 +1211,8 @@ export default function UsersPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>Users</CardTitle>
-            <Button type="button">Invite</Button>
+            <CardTitle>${i18nNode("Users", "用户")}</CardTitle>
+            <Button type="button">${i18nNode("Invite", "邀请")}</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -892,10 +1220,10 @@ export default function UsersPage() {
             <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-surface text-slate-600">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">${i18nNode("Name", "姓名")}</th>
+                  <th className="px-4 py-3 font-medium">${i18nNode("Email", "邮箱")}</th>
+                  <th className="px-4 py-3 font-medium">${i18nNode("Role", "角色")}</th>
+                  <th className="px-4 py-3 font-medium">${i18nNode("Status", "状态")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-white">
@@ -903,8 +1231,8 @@ export default function UsersPage() {
                   <tr key={user.email}>
                     <td className="px-4 py-3 font-medium text-ink">{user.name}</td>
                     <td className="px-4 py-3 text-muted">{user.email}</td>
-                    <td className="px-4 py-3 text-muted">{user.role}</td>
-                    <td className="px-4 py-3"><Badge>{user.status}</Badge></td>
+                    <td className="px-4 py-3 text-muted"><I18nText value={user.role} /></td>
+                    <td className="px-4 py-3"><Badge><I18nText value={user.status} /></Badge></td>
                   </tr>
                 ))}
               </tbody>
@@ -921,6 +1249,7 @@ export default function UsersPage() {
 function frontendRolesPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { roles } from "@/lib/mock-data";
 
@@ -931,11 +1260,11 @@ export default function RolesPage() {
         {roles.map((role) => (
           <Card key={role.name}>
             <CardHeader>
-              <CardTitle>{role.name}</CardTitle>
+              <CardTitle><I18nText value={role.name} /></CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted">{role.description}</p>
-              <p className="mt-4 text-sm font-medium text-ink">{role.members} members</p>
+              <p className="text-sm text-muted"><I18nText value={role.description} /></p>
+              <p className="mt-4 text-sm font-medium text-ink">{role.members} <I18nText value="members" /></p>
             </CardContent>
           </Card>
         ))}
@@ -949,6 +1278,7 @@ export default function RolesPage() {
 function frontendAiPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -960,20 +1290,20 @@ export default function AiPage() {
       <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader>
-            <CardTitle>AI chat</CardTitle>
+            <CardTitle>${i18nNode("AI chat", "AI 对话")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="rounded-md bg-surface p-4 text-sm text-slate-700">
-                Ask the mock provider to summarize product feedback.
+                ${i18nNode("Ask the mock provider to summarize product feedback.", "让模拟供应商总结产品反馈。")}
               </div>
               <div className="rounded-md border border-border bg-white p-4 text-sm text-slate-700">
-                The provider abstraction is ready. Set AI_PROVIDER and API keys in .env.
+                ${i18nNode("The provider abstraction is ready. Set AI_PROVIDER and API keys in .env.", "供应商抽象已准备好。可在 .env 中设置 AI_PROVIDER 和 API 密钥。")}
               </div>
               <div className="flex gap-3">
-                <Input label="Message" placeholder="Summarize this week's usage" />
+                <Input label=${i18nProp("Message", "消息")} placeholder="Summarize this week's usage" />
                 <div className="pt-6">
-                  <Button type="button">Send</Button>
+                  <Button type="button">${i18nNode("Send", "发送")}</Button>
                 </div>
               </div>
             </div>
@@ -982,14 +1312,14 @@ export default function AiPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Prompt library</CardTitle>
+            <CardTitle>${i18nNode("Prompt library", "提示词库")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {prompts.map((prompt) => (
                 <div key={prompt.name} className="rounded-md border border-border p-3">
-                  <p className="text-sm font-medium text-ink">{prompt.name}</p>
-                  <p className="mt-1 text-sm text-muted">{prompt.description}</p>
+                  <p className="text-sm font-medium text-ink"><I18nText value={prompt.name} /></p>
+                  <p className="mt-1 text-sm text-muted"><I18nText value={prompt.description} /></p>
                 </div>
               ))}
             </div>
@@ -1005,6 +1335,7 @@ export default function AiPage() {
 function frontendAuditPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auditLogs } from "@/lib/mock-data";
@@ -1014,17 +1345,17 @@ export default function AuditPage() {
     <AppShell>
       <Card>
         <CardHeader>
-          <CardTitle>Audit logs</CardTitle>
+          <CardTitle>${i18nNode("Audit logs", "审计日志")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {auditLogs.map((log) => (
               <div key={log.id} className="flex items-center justify-between rounded-md border border-border p-3">
                 <div>
-                  <p className="text-sm font-medium text-ink">{log.action}</p>
-                  <p className="text-sm text-muted">{log.actor} · {log.time}</p>
+                  <p className="text-sm font-medium text-ink"><I18nText value={log.action} /></p>
+                  <p className="text-sm text-muted">{log.actor} / <I18nText value={log.time} /></p>
                 </div>
-                <Badge>{log.scope}</Badge>
+                <Badge><I18nText value={log.scope} /></Badge>
               </div>
             ))}
           </div>
@@ -1039,6 +1370,7 @@ export default function AuditPage() {
 function frontendFilesPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -1048,13 +1380,13 @@ export default function FilesPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>Files</CardTitle>
-            <Button type="button">Upload</Button>
+            <CardTitle>${i18nNode("Files", "文件")}</CardTitle>
+            <Button type="button">${i18nNode("Upload", "上传")}</Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
-            File storage module placeholder. Wire this to S3, R2, OSS, or local storage.
+            ${i18nNode("File storage module placeholder. Wire this to S3, R2, OSS, or local storage.", "文件存储模块占位。可接入 S3、R2、OSS 或本地存储。")}
           </div>
         </CardContent>
       </Card>
@@ -1067,6 +1399,7 @@ export default function FilesPage() {
 function frontendEmailPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1076,15 +1409,15 @@ export default function EmailPage() {
     <AppShell>
       <Card>
         <CardHeader>
-          <CardTitle>Email preview</CardTitle>
+          <CardTitle>${i18nNode("Email preview", "邮件预览")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="grid max-w-2xl gap-4">
-            <Input label="Recipient" placeholder="founder@example.com" />
-            <Input label="Subject" placeholder="Welcome to ProductFlow" />
-            <Input label="Template key" placeholder="welcome" />
+            <Input label=${i18nProp("Recipient", "收件人")} placeholder="founder@example.com" />
+            <Input label=${i18nProp("Subject", "主题")} placeholder="Welcome to ProductFlow" />
+            <Input label=${i18nProp("Template key", "模板键")} placeholder="welcome" />
             <div>
-              <Button type="button">Render preview</Button>
+              <Button type="button">${i18nNode("Render preview", "生成预览")}</Button>
             </div>
           </form>
         </CardContent>
@@ -1148,15 +1481,16 @@ export function CardContent({ children }: { children: React.ReactNode }) {
 function frontendInput() {
   return text`
 import type { InputHTMLAttributes } from "react";
+import { I18nText, type LocalizedText } from "@/components/i18n";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
+  label: LocalizedText;
 };
 
 export function Input({ label, className = "", ...props }: InputProps) {
   return (
     <label className="grid gap-2 text-sm font-medium text-slate-700">
-      {label}
+      <I18nText value={label} />
       <input
         className={
           "h-10 rounded-md border border-border bg-white px-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-teal-100 " +
@@ -1201,8 +1535,39 @@ function vueApp(context) {
   const resources = blueprintResources(context);
   return text`
 <script setup lang="ts">
+import { ref } from "vue";
+
+type Language = "en" | "zh";
+
+const languageMode = ${JSON.stringify(context.language)};
+const defaultLanguage = ${JSON.stringify(frontendDefaultLanguage(context))} as Language;
+const zhDictionary: Record<string, string> = ${JSON.stringify(zhDictionary(), null, 2)};
 const metrics = ${JSON.stringify(blueprintMetrics(context), null, 2)};
 const resources = ${JSON.stringify(resources, null, 2)};
+const language = ref<Language>(defaultLanguage);
+
+if (languageMode === "bilingual") {
+  const stored = window.localStorage.getItem("productflow-language");
+  if (stored === "en" || stored === "zh") {
+    language.value = stored;
+  }
+}
+
+function setLanguage(nextLanguage: Language) {
+  language.value = languageMode === "bilingual" ? nextLanguage : defaultLanguage;
+  document.documentElement.lang = language.value === "zh" ? "zh-CN" : "en";
+  document.documentElement.dataset.language = language.value;
+
+  if (languageMode === "bilingual") {
+    window.localStorage.setItem("productflow-language", language.value);
+  }
+}
+
+function t(value: string) {
+  return language.value === "zh" ? zhDictionary[value] ?? value : value;
+}
+
+setLanguage(language.value);
 </script>
 
 <template>
@@ -1211,11 +1576,11 @@ const resources = ${JSON.stringify(resources, null, 2)};
       <p class="eyebrow">ProductFlow</p>
       <h1>${context.displayName}</h1>
       <nav>
-        <a href="#dashboard">Dashboard</a>
+        <a href="#dashboard">{{ t("Dashboard") }}</a>
         <a v-for="resource in resources" :key="resource.id" :href="'#' + resource.id">
-          {{ resource.navLabel || resource.title }}
+          {{ t(resource.navLabel || resource.title) }}
         </a>
-        <a href="#settings">Settings</a>
+        <a href="#settings">{{ t("Settings") }}</a>
       </nav>
     </aside>
 
@@ -1223,32 +1588,38 @@ const resources = ${JSON.stringify(resources, null, 2)};
       <header class="topbar">
         <div>
           <p class="eyebrow">${context.template.name}</p>
-          <h2>Vue admin workspace</h2>
+          <h2>{{ t("Vue admin workspace") }}</h2>
         </div>
-        <span class="badge">Local demo</span>
+        <div class="topbar-actions">
+          <div v-if="languageMode === 'bilingual'" class="language-toggle" aria-label="Language">
+            <button :class="{ active: language === 'en' }" type="button" @click="setLanguage('en')">EN</button>
+            <button :class="{ active: language === 'zh' }" type="button" @click="setLanguage('zh')">中文</button>
+          </div>
+          <span class="badge">{{ t("Local demo") }}</span>
+        </div>
       </header>
 
       <section id="dashboard" class="metrics">
         <article v-for="metric in metrics" :key="metric.label" class="card">
-          <p class="label">{{ metric.label }}</p>
+          <p class="label">{{ t(metric.label) }}</p>
           <strong>{{ metric.value }}</strong>
-          <span>{{ metric.change }}</span>
+          <span>{{ t(metric.change) }}</span>
         </article>
       </section>
 
       <section v-for="resource in resources" :id="resource.id" :key="resource.id" class="panel">
         <div class="panel-header">
           <div>
-            <h3>{{ resource.title }}</h3>
-            <p>{{ resource.description }}</p>
+            <h3>{{ t(resource.title) }}</h3>
+            <p>{{ t(resource.description) }}</p>
           </div>
-          <button>{{ resource.actionLabel || "Create" }}</button>
+          <button>{{ t(resource.actionLabel || "Create") }}</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th v-for="field in resource.fields" :key="field.name">{{ field.label }}</th>
+                <th v-for="field in resource.fields" :key="field.name">{{ t(field.label) }}</th>
               </tr>
             </thead>
             <tbody>
@@ -1330,6 +1701,33 @@ body {
 
 .topbar h2 {
   margin: 0;
+}
+
+.topbar-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.language-toggle {
+  background: #ffffff;
+  border: 1px solid #d6d9e0;
+  border-radius: 6px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.language-toggle button {
+  background: transparent;
+  color: #475569;
+  height: 32px;
+  padding: 0 12px;
+}
+
+.language-toggle button.active {
+  background: #0f766e;
+  color: #ffffff;
 }
 
 .eyebrow {
@@ -1514,6 +1912,7 @@ function frontendBlueprintPage(resource) {
 
   return text`
 import { AppShell } from "@/components/app-shell";
+import { I18nText } from "@/components/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -1527,10 +1926,10 @@ export default function ${resource.className}Page() {
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <CardTitle>${resource.title}</CardTitle>
-              <p className="mt-1 text-sm text-muted">${resource.description}</p>
+              <CardTitle>${i18nNode(resource.title, zhText(resource.title))}</CardTitle>
+              <p className="mt-1 text-sm text-muted">${i18nNode(resource.description, zhText(resource.description))}</p>
             </div>
-            <Button type="button">${resource.actionLabel ?? "Create"}</Button>
+            <Button type="button">${i18nNode(resource.actionLabel ?? "Create", zhText(resource.actionLabel ?? "Create"))}</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -1539,7 +1938,7 @@ export default function ${resource.className}Page() {
               <thead className="bg-surface text-slate-600">
                 <tr>
                   {columns.map((column) => (
-                    <th key={column.key} className="px-4 py-3 font-medium">{column.label}</th>
+                    <th key={column.key} className="px-4 py-3 font-medium"><I18nText value={column.label} /></th>
                   ))}
                 </tr>
               </thead>
@@ -2163,14 +2562,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
-    private final SessionAuthFilter sessionAuthFilter;
-
-    public SecurityConfig(SessionAuthFilter sessionAuthFilter) {
-        this.sessionAuthFilter = sessionAuthFilter;
-    }
-
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, SessionAuthFilter sessionAuthFilter) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))

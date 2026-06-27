@@ -32,6 +32,11 @@ test("generates vue-admin with Vue frontend", async () => {
   assertNoFile(targetDir, "frontend/app/page.tsx");
   assertFile(targetDir, "backend/src/main/java/com/productflow/app/admin/AdminTeamController.java");
 
+  const appVue = readFile(targetDir, "frontend/src/App.vue");
+  assert.match(appVue, /const languageMode = "bilingual"/);
+  assert.match(appVue, /function setLanguage/);
+  assert.match(appVue, /中文/);
+
   const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
   assert.match(migration, /CREATE TABLE IF NOT EXISTS admin_teams/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS admin_incidents/);
