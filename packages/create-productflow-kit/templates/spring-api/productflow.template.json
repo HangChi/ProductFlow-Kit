@@ -1,0 +1,93 @@
+{
+  "id": "spring-api",
+  "name": "Spring API",
+  "description": "A pure Spring Boot API starter for backend services, API key management, webhooks, and usage tracking.",
+  "stack": {
+    "frontend": "None",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth"],
+  "defaultModules": ["auth"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow API",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "none",
+    "metrics": [
+      { "label": "Requests", "value": "2.4M", "change": "30-day volume" },
+      { "label": "P95 latency", "value": "182ms", "change": "Healthy" },
+      { "label": "API keys", "value": "86", "change": "12 expiring soon" },
+      { "label": "Webhooks", "value": "34", "change": "4 failing" }
+    ],
+    "resources": [
+      {
+        "id": "apiKeys",
+        "title": "API keys",
+        "description": "Issue, rotate, and revoke integration credentials.",
+        "apiPath": "/api/platform/api-keys",
+        "javaPackage": "platform",
+        "className": "ApiKey",
+        "table": "platform_api_keys",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "scope", "label": "Scope" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "Production sync", "owner": "Ada Chen", "scope": "read:all", "status": "active" },
+          { "name": "Billing export", "owner": "Ben Miller", "scope": "billing:read", "status": "active" },
+          { "name": "Legacy partner", "owner": "Chris Zhou", "scope": "read:users", "status": "rotating" }
+        ]
+      },
+      {
+        "id": "webhooks",
+        "title": "Webhooks",
+        "description": "Manage outbound event subscriptions and delivery status.",
+        "apiPath": "/api/platform/webhooks",
+        "javaPackage": "platform",
+        "className": "WebhookSubscription",
+        "table": "platform_webhooks",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "event", "label": "Event" },
+          { "name": "target", "label": "Target" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "CRM update", "event": "account.updated", "target": "https://crm.example.com/hooks", "status": "active" },
+          { "name": "Billing paid", "event": "invoice.paid", "target": "https://billing.example.com/hooks", "status": "active" },
+          { "name": "Audit mirror", "event": "audit.created", "target": "https://ops.example.com/hooks", "status": "failing" }
+        ]
+      },
+      {
+        "id": "usage",
+        "title": "API usage",
+        "description": "Inspect request volume, latency, errors, and consumer usage windows.",
+        "apiPath": "/api/platform/usage",
+        "javaPackage": "platform",
+        "className": "ApiUsage",
+        "table": "platform_api_usage",
+        "fields": [
+          { "name": "consumer", "label": "Consumer" },
+          { "name": "requests", "label": "Requests" },
+          { "name": "errors", "label": "Errors" },
+          { "name": "window", "label": "Window" }
+        ],
+        "samples": [
+          { "consumer": "Northstar Labs", "requests": "184k", "errors": "0.2%", "window": "30d" },
+          { "consumer": "Atlas Supply", "requests": "92k", "errors": "0.4%", "window": "30d" },
+          { "consumer": "Orbit Systems", "requests": "221k", "errors": "0.1%", "window": "30d" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

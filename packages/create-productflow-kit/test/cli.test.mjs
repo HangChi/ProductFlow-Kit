@@ -225,6 +225,28 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS approval_requests/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS approval_rules/);
   });
+
+  test("generates spring-api as a backend-only starter", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "api-app");
+
+    const result = await createProject({
+      appName: "api-app",
+      targetDir,
+      template: "spring-api",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "spring-api");
+    assert.deepEqual(result.modules, ["auth"]);
+    assertNoFile(targetDir, "frontend/package.json");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/platform/ApiKeyController.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/platform/WebhookSubscriptionController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_api_keys/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS platform_webhooks/);
+  });
 });
 
 function makeTempRoot() {
