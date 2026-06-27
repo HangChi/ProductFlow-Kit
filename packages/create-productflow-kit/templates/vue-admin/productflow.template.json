@@ -1,0 +1,99 @@
+{
+  "id": "vue-admin",
+  "name": "Vue Admin",
+  "description": "A Vue 3 admin starter with Vite, Spring Boot APIs, operations dashboards, and admin resource screens.",
+  "stack": {
+    "frontend": "Vue 3 + Vite + TypeScript",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth"],
+  "defaultModules": ["auth"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow Vue Admin",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "vue",
+    "metrics": [
+      { "label": "Operators", "value": "42", "change": "12 online" },
+      { "label": "Jobs", "value": "318", "change": "29 pending" },
+      { "label": "Incidents", "value": "6", "change": "2 urgent" },
+      { "label": "Automation", "value": "71%", "change": "Healthy" }
+    ],
+    "resources": [
+      {
+        "id": "teams",
+        "title": "Teams",
+        "navLabel": "Teams",
+        "description": "Manage operational teams, ownership, and service coverage.",
+        "apiPath": "/api/admin/teams",
+        "javaPackage": "admin",
+        "className": "AdminTeam",
+        "table": "admin_teams",
+        "actionLabel": "New team",
+        "fields": [
+          { "name": "name", "label": "Team" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "coverage", "label": "Coverage" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "Platform Ops", "owner": "Ada Chen", "coverage": "24/7", "status": "active" },
+          { "name": "Customer Ops", "owner": "Ben Miller", "coverage": "Business hours", "status": "active" },
+          { "name": "Data Ops", "owner": "Chris Zhou", "coverage": "Follow-the-sun", "status": "active" }
+        ]
+      },
+      {
+        "id": "jobs",
+        "title": "Jobs",
+        "navLabel": "Jobs",
+        "description": "Track scheduled jobs, background workers, and operational retries.",
+        "apiPath": "/api/admin/jobs",
+        "javaPackage": "admin",
+        "className": "AdminJob",
+        "table": "admin_jobs",
+        "actionLabel": "Run job",
+        "fields": [
+          { "name": "name", "label": "Job" },
+          { "name": "schedule", "label": "Schedule" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "Billing sync", "schedule": "Hourly", "owner": "Platform Ops", "status": "healthy" },
+          { "name": "Usage aggregate", "schedule": "Daily", "owner": "Data Ops", "status": "healthy" },
+          { "name": "Webhook retry", "schedule": "Every 5 min", "owner": "Customer Ops", "status": "warning" }
+        ]
+      },
+      {
+        "id": "incidents",
+        "title": "Incidents",
+        "navLabel": "Incidents",
+        "description": "Coordinate operational incidents, severity, owners, and resolution state.",
+        "apiPath": "/api/admin/incidents",
+        "javaPackage": "admin",
+        "className": "AdminIncident",
+        "table": "admin_incidents",
+        "actionLabel": "Open incident",
+        "fields": [
+          { "name": "title", "label": "Incident" },
+          { "name": "severity", "label": "Severity" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "title": "Webhook latency", "severity": "SEV-2", "owner": "Platform Ops", "status": "Investigating" },
+          { "title": "Billing export delay", "severity": "SEV-3", "owner": "Data Ops", "status": "Mitigated" },
+          { "title": "Support inbox spike", "severity": "SEV-4", "owner": "Customer Ops", "status": "Monitoring" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}
