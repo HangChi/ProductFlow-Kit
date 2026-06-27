@@ -1,0 +1,56 @@
+{
+  "id": "landing-page",
+  "name": "Landing Page",
+  "description": "A marketing website starter with hero content, pricing signals, lead capture, and a Spring Boot leads API.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["email", "audit-log"],
+  "defaultModules": ["email"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow Landing",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "next",
+    "metrics": [
+      { "label": "Visitors", "value": "24.8k", "change": "+18% this month" },
+      { "label": "Leads", "value": "1,284", "change": "312 qualified" },
+      { "label": "Conversion", "value": "5.2%", "change": "Homepage to signup" },
+      { "label": "Campaigns", "value": "9", "change": "3 launching soon" }
+    ],
+    "resources": [
+      {
+        "id": "leads",
+        "title": "Landing leads",
+        "navLabel": "Leads",
+        "description": "Capture demo requests, newsletter signups, and launch waitlist interest.",
+        "route": "/leads",
+        "apiPath": "/api/leads",
+        "javaPackage": "leads",
+        "className": "Lead",
+        "table": "landing_leads",
+        "actionLabel": "Add lead",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "email", "label": "Email" },
+          { "name": "source", "label": "Source" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "Nora Liu", "email": "nora@example.com", "source": "Pricing page", "status": "qualified" },
+          { "name": "Owen Grant", "email": "owen@example.com", "source": "Newsletter", "status": "new" },
+          { "name": "Priya Shah", "email": "priya@example.com", "source": "Demo request", "status": "contacted" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

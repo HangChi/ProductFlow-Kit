@@ -38,9 +38,10 @@ describe("CLI parsing", () => {
 });
 
 describe("template manifests", () => {
-  test("loads both starter manifests", () => {
+  test("loads starter manifests", () => {
     const ids = loadTemplateManifests().map((template) => template.id);
-    assert.deepEqual(ids, ["ai-saas", "saas-admin"]);
+    assert.equal(ids.includes("ai-saas"), true);
+    assert.equal(ids.includes("saas-admin"), true);
   });
 });
 
@@ -115,6 +116,26 @@ describe("project generation", () => {
     assertFile(targetDir, "frontend/app/email/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/files/FileController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/email/EmailController.java");
+  });
+
+  test("generates landing-page with lead capture blueprint", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "landing-app");
+
+    const result = await createProject({
+      appName: "landing-app",
+      targetDir,
+      template: "landing-page",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "landing-page");
+    assert.deepEqual(result.modules, ["email"]);
+    assertFile(targetDir, "frontend/app/leads/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/leads/LeadController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS landing_leads/);
   });
 });
 

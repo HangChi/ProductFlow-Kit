@@ -16,7 +16,7 @@ Usage:
   productflow list
 
 Options:
-  --template <id>     saas-admin | ai-saas
+  --template <id>     Template id. Run productflow list to see all templates
   --data <layer>      jpa | jpa-flyway | mybatis | mybatis-plus
   --modules <list>    Comma-separated modules, e.g. auth,rbac,ai,audit-log
   --language <value>  en | zh | bilingual

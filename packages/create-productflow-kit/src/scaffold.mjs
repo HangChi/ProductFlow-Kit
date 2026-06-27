@@ -10,26 +10,6 @@ export function buildProjectFiles(context) {
     file("docker-compose.yml", dockerCompose(context)),
     file("README.md", generatedReadmeEn(context)),
     file("README.zh-CN.md", generatedReadmeZh(context)),
-    file("frontend/package.json", frontendPackageJson(context)),
-    file("frontend/next.config.ts", nextConfig()),
-    file("frontend/tsconfig.json", frontendTsConfig()),
-    file("frontend/tailwind.config.ts", tailwindConfig()),
-    file("frontend/postcss.config.mjs", postcssConfig()),
-    file("frontend/app/globals.css", frontendGlobals()),
-    file("frontend/app/layout.tsx", frontendLayout(context)),
-    file("frontend/app/page.tsx", frontendDashboardPage(context)),
-    file("frontend/app/prototype/page.tsx", frontendPrototypePage()),
-    file("frontend/app/settings/page.tsx", frontendSettingsPage(context)),
-    file("frontend/app/users/page.tsx", frontendUsersPage(context)),
-    file("frontend/components/app-shell.tsx", frontendAppShell(context)),
-    file("frontend/components/ui/badge.tsx", frontendBadge()),
-    file("frontend/components/ui/button.tsx", frontendButton()),
-    file("frontend/components/ui/card.tsx", frontendCard()),
-    file("frontend/components/ui/input.tsx", frontendInput()),
-    file("frontend/lib/api.ts", frontendApi(context)),
-    file("frontend/lib/mock-data.ts", frontendMockData(context)),
-    file("frontend/tests/smoke.test.mjs", frontendSmokeTest(context)),
-    file("frontend/Dockerfile", frontendDockerfile()),
     file("backend/pom.xml", backendPom(context)),
     file("backend/Dockerfile", backendDockerfile()),
     file(`${JAVA_ROOT}/Application.java`, backendApplication()),
@@ -39,6 +19,16 @@ export function buildProjectFiles(context) {
     file("backend/src/main/resources/db/migration/V1__init.sql", backendMigration(context)),
     file("backend/src/test/java/com/productflow/app/SmokeTest.java", backendSmokeTest(context)),
   ];
+
+  if (frontendKind(context) === "next") {
+    files.push(...nextFrontendFiles(context));
+  }
+
+  if (frontendKind(context) === "vue") {
+    files.push(...vueFrontendFiles(context));
+  }
+
+  files.push(...blueprintFiles(context));
 
   if (has(context, "auth")) {
     files.push(file(`${JAVA_ROOT}/auth/AuthController.java`, backendAuthController()));
@@ -99,6 +89,79 @@ function has(context, moduleId) {
   return context.modules.includes(moduleId);
 }
 
+function frontendKind(context) {
+  return context.template.blueprint?.frontend ?? "next";
+}
+
+function isBackendOnly(context) {
+  return frontendKind(context) === "none";
+}
+
+function blueprintResources(context) {
+  return context.template.blueprint?.resources ?? [];
+}
+
+function blueprintMetrics(context) {
+  return (
+    context.template.blueprint?.metrics ?? [
+      { label: "Revenue", value: "$42.8k", change: "+12.5% vs last month" },
+      { label: "Active users", value: "8,240", change: "+842 this week" },
+      { label: "Conversion", value: "7.6%", change: "Healthy funnel" },
+      { label: "Open tasks", value: "31", change: "9 need attention" },
+    ]
+  );
+}
+
+function nextFrontendFiles(context) {
+  return [
+    file("frontend/package.json", frontendPackageJson(context)),
+    file("frontend/next.config.ts", nextConfig()),
+    file("frontend/tsconfig.json", frontendTsConfig()),
+    file("frontend/tailwind.config.ts", tailwindConfig()),
+    file("frontend/postcss.config.mjs", postcssConfig()),
+    file("frontend/app/globals.css", frontendGlobals()),
+    file("frontend/app/layout.tsx", frontendLayout(context)),
+    file("frontend/app/page.tsx", frontendDashboardPage(context)),
+    file("frontend/app/prototype/page.tsx", frontendPrototypePage()),
+    file("frontend/app/settings/page.tsx", frontendSettingsPage(context)),
+    file("frontend/app/users/page.tsx", frontendUsersPage(context)),
+    file("frontend/components/app-shell.tsx", frontendAppShell(context)),
+    file("frontend/components/ui/badge.tsx", frontendBadge()),
+    file("frontend/components/ui/button.tsx", frontendButton()),
+    file("frontend/components/ui/card.tsx", frontendCard()),
+    file("frontend/components/ui/input.tsx", frontendInput()),
+    file("frontend/lib/api.ts", frontendApi(context)),
+    file("frontend/lib/mock-data.ts", frontendMockData(context)),
+    file("frontend/tests/smoke.test.mjs", frontendSmokeTest(context)),
+    file("frontend/Dockerfile", frontendDockerfile(context)),
+  ];
+}
+
+function vueFrontendFiles(context) {
+  return [
+    file("frontend/package.json", frontendPackageJson(context)),
+    file("frontend/index.html", vueIndexHtml(context)),
+    file("frontend/src/main.ts", vueMainTs()),
+    file("frontend/src/App.vue", vueApp(context)),
+    file("frontend/src/style.css", vueStyle()),
+    file("frontend/tsconfig.json", vueTsConfig()),
+    file("frontend/vite.config.ts", vueViteConfig()),
+    file("frontend/tests/smoke.test.mjs", frontendSmokeTest(context)),
+    file("frontend/Dockerfile", frontendDockerfile(context)),
+  ];
+}
+
+function blueprintFiles(context) {
+  const files = [];
+  for (const resource of blueprintResources(context)) {
+    files.push(file(`${JAVA_ROOT}/${resource.javaPackage}/${resource.className}Controller.java`, backendBlueprintController(resource)));
+    if (frontendKind(context) === "next" && resource.route) {
+      files.push(file(`frontend/app${resource.route}/page.tsx`, frontendBlueprintPage(resource)));
+    }
+  }
+  return files;
+}
+
 function text(strings, ...values) {
   let output = "";
   for (let index = 0; index < strings.length; index += 1) {
@@ -110,6 +173,18 @@ function text(strings, ...values) {
 
 function json(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function javaString(value) {
+  return JSON.stringify(String(value));
+}
+
+function toSnakeCase(value) {
+  return String(value)
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
 }
 
 function generatedManifest(context) {
@@ -166,24 +241,47 @@ target/
 }
 
 function rootPackageJson(context) {
+  const scripts = {
+    dev: "docker compose up --build",
+    "dev:backend": "mvn -f backend/pom.xml spring-boot:run",
+    "test:backend": "mvn -f backend/pom.xml test",
+    test: "mvn -f backend/pom.xml test",
+  };
+
+  const workspaces = [];
+  if (!isBackendOnly(context)) {
+    scripts["dev:frontend"] = "npm --prefix frontend run dev";
+    scripts["test:frontend"] = "npm --prefix frontend test";
+    scripts.test = "npm run test:frontend && npm run test:backend";
+    workspaces.push("frontend");
+  }
+
   return json({
     name: context.packageName,
     version: "0.1.0",
     private: true,
     type: "module",
-    scripts: {
-      dev: "docker compose up --build",
-      "dev:frontend": "npm --prefix frontend run dev",
-      "dev:backend": "mvn -f backend/pom.xml spring-boot:run",
-      "test:frontend": "npm --prefix frontend test",
-      "test:backend": "mvn -f backend/pom.xml test",
-      test: "npm run test:frontend && npm run test:backend",
-    },
-    workspaces: ["frontend"],
+    scripts,
+    workspaces,
   });
 }
 
-function dockerCompose() {
+function dockerCompose(context) {
+  const frontendService = isBackendOnly(context)
+    ? ""
+    : text`
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      VITE_API_URL: http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"`;
+
   return text`
 services:
   postgres:
@@ -216,16 +314,7 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-
-  frontend:
-    build:
-      context: ./frontend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-    depends_on:
-      - backend
-    ports:
-      - "3000:3000"
+${frontendService}
 
 volumes:
   postgres-data:
@@ -233,6 +322,13 @@ volumes:
 }
 
 function generatedReadmeEn(context) {
+  const frontendLine = isBackendOnly(context)
+    ? "- Frontend: none. This is a pure Spring Boot API starter."
+    : `- Frontend: ${frontendKind(context) === "vue" ? "Vue 3, Vite, TypeScript" : "Next.js, React, TypeScript, Tailwind CSS"}.`;
+  const resources = blueprintResources(context)
+    .map((resource) => `- \`${resource.apiPath}\`: ${resource.title}.`)
+    .join("\n");
+
   return text`
 # ${context.displayName}
 
@@ -240,7 +336,7 @@ Generated with ProductFlow Kit.
 
 ## Stack
 
-- Frontend: Next.js, React, TypeScript, Tailwind CSS.
+${frontendLine}
 - Backend: Spring Boot, Java 21.
 - Data layer: ${context.dataLayer === "jpa" ? "JPA + Flyway" : "MyBatis-Plus + Flyway"}.
 - Database: PostgreSQL.
@@ -272,10 +368,18 @@ npm test
 - \`/api/roles/*\` when RBAC is enabled.
 - \`/api/ai/chat\` when AI is enabled.
 - \`/api/audit-logs\` when audit logs are enabled.
+${resources}
 `;
 }
 
 function generatedReadmeZh(context) {
+  const frontendLine = isBackendOnly(context)
+    ? "- 前端：无。这是纯 Spring Boot API 模板。"
+    : `- 前端：${frontendKind(context) === "vue" ? "Vue 3、Vite、TypeScript" : "Next.js、React、TypeScript、Tailwind CSS"}。`;
+  const resources = blueprintResources(context)
+    .map((resource) => `- \`${resource.apiPath}\`：${resource.title}。`)
+    .join("\n");
+
   return text`
 # ${context.displayName}
 
@@ -283,7 +387,7 @@ function generatedReadmeZh(context) {
 
 ## 技术栈
 
-- 前端：Next.js、React、TypeScript、Tailwind CSS。
+${frontendLine}
 - 后端：Spring Boot、Java 21。
 - 数据层：${context.dataLayer === "jpa" ? "JPA + Flyway" : "MyBatis-Plus + Flyway"}。
 - 数据库：PostgreSQL。
@@ -307,10 +411,43 @@ npm --prefix frontend run dev
 mvn -f backend/pom.xml spring-boot:run
 npm test
 \`\`\`
+
+## API
+
+- \`/api/users/*\`
+- \`/api/auth/*\`：启用 auth 模块时可用。
+- \`/api/roles/*\`：启用 rbac 模块时可用。
+- \`/api/ai/chat\`：启用 ai 模块时可用。
+- \`/api/audit-logs\`：启用 audit-log 模块时可用。
+${resources}
 `;
 }
 
 function frontendPackageJson(context) {
+  if (frontendKind(context) === "vue") {
+    return json({
+      name: `${context.packageName}-frontend`,
+      version: "0.1.0",
+      private: true,
+      type: "module",
+      scripts: {
+        dev: "vite --host 0.0.0.0",
+        build: "vue-tsc --noEmit && vite build",
+        preview: "vite preview --host 0.0.0.0 --port 3000",
+        test: "node --test tests/*.test.mjs",
+      },
+      dependencies: {
+        "@vitejs/plugin-vue": "^5.2.1",
+        vite: "^6.0.7",
+        vue: "^3.5.13",
+      },
+      devDependencies: {
+        typescript: "^5.7.0",
+        "vue-tsc": "^2.2.0",
+      },
+    });
+  }
+
   return json({
     name: `${context.packageName}-frontend`,
     version: "0.1.0",
@@ -547,6 +684,11 @@ function navigationItems(context) {
     "{ href: '/', label: 'Dashboard', icon: Home }",
     "{ href: '/users', label: 'Users', icon: Users }",
   ];
+  for (const resource of blueprintResources(context)) {
+    if (resource.route) {
+      items.push(`{ href: '${resource.route}', label: '${resource.navLabel ?? resource.title}', icon: Database }`);
+    }
+  }
   if (has(context, "rbac")) items.push("{ href: '/roles', label: 'Roles', icon: Shield }");
   if (has(context, "ai")) items.push("{ href: '/ai', label: 'AI Chat', icon: Bot }");
   if (has(context, "audit-log")) items.push("{ href: '/audit', label: 'Audit Logs', icon: Activity }");
@@ -999,6 +1141,316 @@ export function Input({ label, className = "", ...props }: InputProps) {
 `;
 }
 
+function vueIndexHtml(context) {
+  return text`
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${context.displayName}</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+`;
+}
+
+function vueMainTs() {
+  return text`
+import { createApp } from "vue";
+import App from "./App.vue";
+import "./style.css";
+
+createApp(App).mount("#app");
+`;
+}
+
+function vueApp(context) {
+  const resources = blueprintResources(context);
+  return text`
+<script setup lang="ts">
+const metrics = ${JSON.stringify(blueprintMetrics(context), null, 2)};
+const resources = ${JSON.stringify(resources, null, 2)};
+</script>
+
+<template>
+  <main class="shell">
+    <aside class="sidebar">
+      <p class="eyebrow">ProductFlow</p>
+      <h1>${context.displayName}</h1>
+      <nav>
+        <a href="#dashboard">Dashboard</a>
+        <a v-for="resource in resources" :key="resource.id" :href="'#' + resource.id">
+          {{ resource.navLabel || resource.title }}
+        </a>
+        <a href="#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">${context.template.name}</p>
+          <h2>Vue admin workspace</h2>
+        </div>
+        <span class="badge">Local demo</span>
+      </header>
+
+      <section id="dashboard" class="metrics">
+        <article v-for="metric in metrics" :key="metric.label" class="card">
+          <p class="label">{{ metric.label }}</p>
+          <strong>{{ metric.value }}</strong>
+          <span>{{ metric.change }}</span>
+        </article>
+      </section>
+
+      <section v-for="resource in resources" :id="resource.id" :key="resource.id" class="panel">
+        <div class="panel-header">
+          <div>
+            <h3>{{ resource.title }}</h3>
+            <p>{{ resource.description }}</p>
+          </div>
+          <button>{{ resource.actionLabel || "Create" }}</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th v-for="field in resource.fields" :key="field.name">{{ field.label }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="sample in resource.samples" :key="JSON.stringify(sample)">
+                <td v-for="field in resource.fields" :key="field.name">{{ sample[field.name] }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</template>
+`;
+}
+
+function vueStyle() {
+  return text`
+:root {
+  color: #111827;
+  background: #f7f7f2;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid #d6d9e0;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 24px 18px;
+}
+
+.sidebar h1 {
+  margin: 4px 0 28px;
+  font-size: 22px;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar a {
+  color: #475569;
+  border-radius: 6px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  background: #f7f7f2;
+  color: #111827;
+}
+
+.content {
+  padding: 24px;
+}
+
+.topbar {
+  align-items: center;
+  border-bottom: 1px solid #d6d9e0;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+}
+
+.topbar h2 {
+  margin: 0;
+}
+
+.eyebrow {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.badge {
+  border: 1px solid #d6d9e0;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 8px 12px;
+}
+
+.metrics {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 24px;
+}
+
+.card,
+.panel {
+  background: #ffffff;
+  border: 1px solid #d6d9e0;
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+}
+
+.card {
+  padding: 18px;
+}
+
+.card strong {
+  display: block;
+  font-size: 30px;
+  margin: 8px 0;
+}
+
+.label,
+.card span,
+.panel p {
+  color: #64748b;
+}
+
+.panel {
+  margin-bottom: 20px;
+}
+
+.panel-header {
+  align-items: center;
+  border-bottom: 1px solid #d6d9e0;
+  display: flex;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.panel-header h3 {
+  margin: 0 0 6px;
+}
+
+button {
+  background: #0f766e;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  font-weight: 700;
+  height: 40px;
+  padding: 0 16px;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid #d6d9e0;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+th {
+  background: #f7f7f2;
+  color: #475569;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+`;
+}
+
+function vueTsConfig() {
+  return json({
+    compilerOptions: {
+      target: "ES2020",
+      useDefineForClassFields: true,
+      module: "ESNext",
+      lib: ["ES2020", "DOM", "DOM.Iterable"],
+      skipLibCheck: true,
+      moduleResolution: "Bundler",
+      allowImportingTsExtensions: true,
+      isolatedModules: true,
+      moduleDetection: "force",
+      noEmit: true,
+      jsx: "preserve",
+      strict: true,
+    },
+    include: ["src/**/*.ts", "src/**/*.vue"],
+  });
+}
+
+function vueViteConfig() {
+  return text`
+import vue from "@vitejs/plugin-vue";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [vue()],
+  server: {
+    port: 3000,
+  },
+  preview: {
+    port: 3000,
+  },
+});
+`;
+}
+
 function frontendApi(context) {
   return text`
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -1021,14 +1473,70 @@ export const enabledModules = ${JSON.stringify(context.modules, null, 2)} as con
 `;
 }
 
-function frontendMockData(context) {
+function frontendBlueprintPage(resource) {
+  const columns = resource.fields.map((field) => ({
+    key: field.name,
+    label: field.label,
+  }));
+  const rows = resource.samples.map((sample, index) => ({
+    id: `${resource.id}_${index + 1}`,
+    ...sample,
+  }));
+
   return text`
-export const metrics = [
-  { label: "Revenue", value: "$42.8k", change: "+12.5% vs last month" },
-  { label: "Active users", value: "8,240", change: "+842 this week" },
-  { label: "Conversion", value: "7.6%", change: "Healthy funnel" },
-  { label: "Open tasks", value: "31", change: "9 need attention" },
-];
+import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const columns: Array<{ key: string; label: string }> = ${JSON.stringify(columns, null, 2)};
+const rows: Array<Record<string, string>> = ${JSON.stringify(rows, null, 2)};
+
+export default function ${resource.className}Page() {
+  return (
+    <AppShell>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>${resource.title}</CardTitle>
+              <p className="mt-1 text-sm text-muted">${resource.description}</p>
+            </div>
+            <Button type="button">${resource.actionLabel ?? "Create"}</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-hidden rounded-md border border-border">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-surface text-slate-600">
+                <tr>
+                  {columns.map((column) => (
+                    <th key={column.key} className="px-4 py-3 font-medium">{column.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-white">
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    {columns.map((column) => (
+                      <td key={column.key} className="px-4 py-3 text-slate-700">{row[column.key]}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </AppShell>
+  );
+}
+`;
+}
+
+function frontendMockData(context) {
+  const metrics = blueprintMetrics(context);
+  return text`
+export const metrics = ${JSON.stringify(metrics, null, 2)};
 
 export const users = [
   { name: "Ada Chen", email: "ada@example.com", role: "Owner", status: "active" },
@@ -1086,7 +1594,25 @@ test("template metadata is generated", () => {
 `;
 }
 
-function frontendDockerfile() {
+function frontendDockerfile(context) {
+  if (frontendKind(context) === "vue") {
+    return text`
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+`;
+  }
+
   return text`
 FROM node:22-alpine AS deps
 WORKDIR /app
@@ -1228,6 +1754,42 @@ public record ApiResponse<T>(boolean success, T data, String message) {
 
     public static <T> ApiResponse<T> message(String message) {
         return new ApiResponse<>(true, null, message);
+    }
+}
+`;
+}
+
+function backendBlueprintController(resource) {
+  const recordFields = resource.fields.map((field) => `String ${field.name}`).join(", ");
+  const rows = resource.samples
+    .map((sample, index) => {
+      const values = resource.fields
+        .map((field) => javaString(sample[field.name] ?? ""))
+        .join(", ");
+      return `            new ${resource.className}Dto("${resource.id}_${index + 1}", ${values})`;
+    })
+    .join(",\n");
+
+  return text`
+package ${JAVA_PACKAGE}.${resource.javaPackage};
+
+import ${JAVA_PACKAGE}.common.ApiResponse;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("${resource.apiPath}")
+public class ${resource.className}Controller {
+    @GetMapping
+    public ApiResponse<List<${resource.className}Dto>> list${resource.className}() {
+        return ApiResponse.ok(List.of(
+${rows}
+        ));
+    }
+
+    public record ${resource.className}Dto(String id, ${recordFields}) {
     }
 }
 `;
@@ -1776,6 +2338,17 @@ function backendMigration(context) {
   template_key VARCHAR(120) NOT NULL UNIQUE,
   subject VARCHAR(240) NOT NULL,
   body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);`);
+  }
+
+  for (const resource of blueprintResources(context)) {
+    const columns = resource.fields
+      .map((field) => `  ${field.column ?? toSnakeCase(field.name)} VARCHAR(240) NOT NULL`)
+      .join(",\n");
+    statements.push(`CREATE TABLE IF NOT EXISTS ${resource.table} (
+  id BIGSERIAL PRIMARY KEY,
+${columns},
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`);
   }
