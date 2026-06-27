@@ -1,0 +1,102 @@
+{
+  "id": "content-platform",
+  "name": "Content Platform",
+  "description": "A content operations starter for articles, collections, publishing calendars, and editorial workflow.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "file-storage", "audit-log"],
+  "defaultModules": ["auth", "rbac", "file-storage", "audit-log"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow Content",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "next",
+    "metrics": [
+      { "label": "Articles", "value": "186", "change": "24 drafts" },
+      { "label": "Monthly views", "value": "482k", "change": "+21% organic" },
+      { "label": "Publish rate", "value": "14/wk", "change": "On schedule" },
+      { "label": "Review queue", "value": "9", "change": "3 high priority" }
+    ],
+    "resources": [
+      {
+        "id": "articles",
+        "title": "Articles",
+        "navLabel": "Articles",
+        "description": "Plan, edit, review, and publish long-form content.",
+        "route": "/content/articles",
+        "apiPath": "/api/content/articles",
+        "javaPackage": "content",
+        "className": "Article",
+        "table": "content_articles",
+        "actionLabel": "New article",
+        "fields": [
+          { "name": "title", "label": "Title" },
+          { "name": "author", "label": "Author" },
+          { "name": "status", "label": "Status" },
+          { "name": "channel", "label": "Channel" }
+        ],
+        "samples": [
+          { "title": "AI onboarding playbook", "author": "Ada Chen", "status": "Review", "channel": "Blog" },
+          { "title": "Release notes June", "author": "Ben Miller", "status": "Scheduled", "channel": "Changelog" },
+          { "title": "Customer story Northstar", "author": "Chris Zhou", "status": "Draft", "channel": "Case study" }
+        ]
+      },
+      {
+        "id": "collections",
+        "title": "Collections",
+        "navLabel": "Collections",
+        "description": "Group content into topics, campaigns, courses, and editorial packages.",
+        "route": "/content/collections",
+        "apiPath": "/api/content/collections",
+        "javaPackage": "content",
+        "className": "Collection",
+        "table": "content_collections",
+        "actionLabel": "New collection",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "owner", "label": "Owner" },
+          { "name": "items", "label": "Items" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "AI adoption", "owner": "Ada Chen", "items": "18", "status": "Live" },
+          { "name": "Founder guides", "owner": "Ben Miller", "items": "11", "status": "Planning" },
+          { "name": "Product ops", "owner": "Chris Zhou", "items": "27", "status": "Live" }
+        ]
+      },
+      {
+        "id": "calendar",
+        "title": "Publishing calendar",
+        "navLabel": "Calendar",
+        "description": "Coordinate publication dates, channels, owners, and campaign windows.",
+        "route": "/content/calendar",
+        "apiPath": "/api/content/calendar",
+        "javaPackage": "content",
+        "className": "PublishingSlot",
+        "table": "content_calendar_slots",
+        "actionLabel": "Schedule",
+        "fields": [
+          { "name": "title", "label": "Title" },
+          { "name": "date", "label": "Date" },
+          { "name": "channel", "label": "Channel" },
+          { "name": "owner", "label": "Owner" }
+        ],
+        "samples": [
+          { "title": "Launch story", "date": "Jul 02", "channel": "Blog", "owner": "Ada Chen" },
+          { "title": "Feature spotlight", "date": "Jul 05", "channel": "Newsletter", "owner": "Ben Miller" },
+          { "title": "Workflow guide", "date": "Jul 09", "channel": "Docs", "owner": "Chris Zhou" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

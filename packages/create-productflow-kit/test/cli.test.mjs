@@ -159,6 +159,28 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS crm_accounts/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS crm_deals/);
   });
+
+  test("generates content-platform with editorial resources", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "content-app");
+
+    const result = await createProject({
+      appName: "content-app",
+      targetDir,
+      template: "content-platform",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "content-platform");
+    assert.deepEqual(result.modules, ["auth", "rbac", "file-storage", "audit-log"]);
+    assertFile(targetDir, "frontend/app/content/articles/page.tsx");
+    assertFile(targetDir, "frontend/app/content/calendar/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/content/ArticleController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS content_articles/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS content_calendar_slots/);
+  });
 });
 
 function makeTempRoot() {
