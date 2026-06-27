@@ -85,6 +85,20 @@ Backend: http://localhost:8080
 node --test packages/create-productflow-kit/test/*.test.mjs
 ```
 
+Generate built-in examples:
+
+```bash
+npm run examples:generate
+```
+
+Run full example validation:
+
+```bash
+npm run examples:validate
+```
+
+`examples:validate` generates both examples, runs CLI tests, builds the frontend through Docker, runs backend `mvn test package` in a Maven + JDK 21 container, starts Docker Compose, and probes the generated frontend/backend HTTP services.
+
 ## License
 
 [MIT](./LICENSE)

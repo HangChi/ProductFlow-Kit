@@ -144,6 +144,27 @@ node --test packages/create-productflow-kit/test/*.test.mjs
 npm test
 ```
 
+重新生成内置示例项目：
+
+```bash
+npm run examples:generate
+```
+
+执行完整示例验证：
+
+```bash
+npm run examples:validate
+```
+
+`examples:validate` 会完成这些动作：
+
+- 生成 `examples/saas-admin-jpa`。
+- 生成 `examples/ai-saas-mybatis`。
+- 跑 CLI 测试。
+- 使用 Docker 构建前端，过程中会执行 `npm install` 和 `npm run build`。
+- 使用 Maven + JDK 21 容器执行后端 `mvn test package`。
+- 使用 Docker Compose 启动生成项目，并探测前端和后端 HTTP 服务。
+
 ## License
 
 [MIT](./LICENSE)

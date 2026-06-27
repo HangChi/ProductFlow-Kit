@@ -1,0 +1,38 @@
+# Saas Admin Jpa
+
+Generated with ProductFlow Kit.
+
+## Stack
+
+- Frontend: Next.js, React, TypeScript, Tailwind CSS.
+- Backend: Spring Boot, Java 21.
+- Data layer: JPA + Flyway.
+- Database: PostgreSQL.
+- Modules: auth, rbac, audit-log.
+
+## Run Locally
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Frontend: http://localhost:3000
+
+Backend: http://localhost:8080
+
+## Useful Commands
+
+```bash
+npm --prefix frontend run dev
+mvn -f backend/pom.xml spring-boot:run
+npm test
+```
+
+## API Surface
+
+- `/api/auth/*` when the auth module is enabled.
+- `/api/users/*`.
+- `/api/roles/*` when RBAC is enabled.
+- `/api/ai/chat` when AI is enabled.
+- `/api/audit-logs` when audit logs are enabled.

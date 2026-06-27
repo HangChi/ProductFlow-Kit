@@ -1,0 +1,24 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: ai-saas-mybatis
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/productflow}
+    username: ${DATABASE_USERNAME:productflow}
+    password: ${DATABASE_PASSWORD:productflow}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+
+productflow:
+  template: ai-saas
+  data-layer: mybatis
+  ai:
+    provider: ${AI_PROVIDER:mock}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

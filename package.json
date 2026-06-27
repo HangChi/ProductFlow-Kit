@@ -9,6 +9,8 @@
     "packages/*"
   ],
   "scripts": {
+    "examples:generate": "node scripts/generate-examples.mjs",
+    "examples:validate": "node scripts/validate-examples.mjs",
     "test": "node --test packages/create-productflow-kit/test/*.test.mjs",
     "create": "node packages/create-productflow-kit/bin/productflow.mjs"
   },
