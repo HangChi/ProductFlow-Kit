@@ -1,0 +1,102 @@
+{
+  "id": "workflow-approval",
+  "name": "Workflow Approval",
+  "description": "An approval workflow starter for requests, approval queues, policy rules, and operational audit trails.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "email", "audit-log"],
+  "defaultModules": ["auth", "rbac", "email", "audit-log"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow Approval",
+    "javaPackage": "com.productflow.app"
+  },
+  "blueprint": {
+    "frontend": "next",
+    "metrics": [
+      { "label": "Open requests", "value": "128", "change": "24 urgent" },
+      { "label": "Approval SLA", "value": "91%", "change": "Within target" },
+      { "label": "Automation", "value": "43%", "change": "Auto-approved" },
+      { "label": "Escalations", "value": "7", "change": "Need review" }
+    ],
+    "resources": [
+      {
+        "id": "requests",
+        "title": "Requests",
+        "navLabel": "Requests",
+        "description": "Track purchase, access, leave, and operational requests.",
+        "route": "/workflow/requests",
+        "apiPath": "/api/workflow/requests",
+        "javaPackage": "workflow",
+        "className": "ApprovalRequest",
+        "table": "approval_requests",
+        "actionLabel": "New request",
+        "fields": [
+          { "name": "title", "label": "Title" },
+          { "name": "requester", "label": "Requester" },
+          { "name": "type", "label": "Type" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "title": "AWS production access", "requester": "Ada Chen", "type": "Access", "status": "Pending" },
+          { "title": "Annual vendor renewal", "requester": "Ben Miller", "type": "Procurement", "status": "Approved" },
+          { "title": "Design software seat", "requester": "Chris Zhou", "type": "IT", "status": "Review" }
+        ]
+      },
+      {
+        "id": "approvals",
+        "title": "Approval queue",
+        "navLabel": "Approvals",
+        "description": "Review assigned tasks, escalation reasons, and next approvers.",
+        "route": "/workflow/approvals",
+        "apiPath": "/api/workflow/approvals",
+        "javaPackage": "workflow",
+        "className": "ApprovalTask",
+        "table": "approval_tasks",
+        "actionLabel": "Assign",
+        "fields": [
+          { "name": "request", "label": "Request" },
+          { "name": "approver", "label": "Approver" },
+          { "name": "step", "label": "Step" },
+          { "name": "due", "label": "Due" }
+        ],
+        "samples": [
+          { "request": "AWS production access", "approver": "Security", "step": "Risk review", "due": "Today" },
+          { "request": "Vendor renewal", "approver": "Finance", "step": "Budget check", "due": "Tomorrow" },
+          { "request": "Software seat", "approver": "IT Ops", "step": "License check", "due": "Friday" }
+        ]
+      },
+      {
+        "id": "rules",
+        "title": "Approval rules",
+        "navLabel": "Rules",
+        "description": "Configure routing rules by amount, team, request type, and risk.",
+        "route": "/workflow/rules",
+        "apiPath": "/api/workflow/rules",
+        "javaPackage": "workflow",
+        "className": "ApprovalRule",
+        "table": "approval_rules",
+        "actionLabel": "New rule",
+        "fields": [
+          { "name": "name", "label": "Name" },
+          { "name": "condition", "label": "Condition" },
+          { "name": "approver", "label": "Approver" },
+          { "name": "status", "label": "Status" }
+        ],
+        "samples": [
+          { "name": "High-value procurement", "condition": "Amount > $10k", "approver": "Finance", "status": "active" },
+          { "name": "Production access", "condition": "Resource = prod", "approver": "Security", "status": "active" },
+          { "name": "Software license", "condition": "Category = SaaS", "approver": "IT Ops", "status": "draft" }
+        ]
+      }
+    ]
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

@@ -203,6 +203,28 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS kb_articles/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS kb_search_feedback/);
   });
+
+  test("generates workflow-approval with approval resources", async () => {
+    const root = makeTempRoot();
+    const targetDir = path.join(root, "approval-app");
+
+    const result = await createProject({
+      appName: "approval-app",
+      targetDir,
+      template: "workflow-approval",
+      data: "jpa",
+    });
+
+    assert.equal(result.template.id, "workflow-approval");
+    assert.deepEqual(result.modules, ["auth", "rbac", "email", "audit-log"]);
+    assertFile(targetDir, "frontend/app/workflow/requests/page.tsx");
+    assertFile(targetDir, "frontend/app/workflow/rules/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/workflow/ApprovalRequestController.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS approval_requests/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS approval_rules/);
+  });
 });
 
 function makeTempRoot() {
