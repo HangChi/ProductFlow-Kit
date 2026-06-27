@@ -472,7 +472,10 @@ function moduleMigrationFile(moduleId) {
 
 CREATE TABLE IF NOT EXISTS ai_calls (
   id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   provider VARCHAR(80) NOT NULL,
+  prompt TEXT NOT NULL,
+  response TEXT NOT NULL,
   prompt_tokens INTEGER NOT NULL DEFAULT 0,
   completion_tokens INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

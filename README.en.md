@@ -17,6 +17,27 @@ ProductFlow Kit generates ready-to-run product foundations rather than disconnec
 - Data layers: `JPA + Flyway` or `MyBatis-Plus + Flyway`.
 - Optional modules: `auth`, `rbac`, `ai`, `file-storage`, `email`, `audit-log`.
 
+## Business Capabilities
+
+Generated projects now include database-backed business foundations instead of mock-only APIs:
+
+- Login, registration, logout, and `/api/auth/me`.
+- Bearer session authentication backed by the `auth_sessions` table.
+- User CRUD: create, list, update, and disable users.
+- RBAC: roles, permissions, role-permission bindings, and menu permission metadata.
+- API permission guards for users, roles, AI, files, email, and audit logs.
+- Audit logs persisted for login, user management, AI calls, uploads, and email actions.
+- AI call history persisted with prompt, response, provider, and token estimates.
+- File upload to local storage with metadata persisted in PostgreSQL.
+- Email sending through `JavaMailSender`, with queued/failed/sent status persisted.
+
+Default admin account:
+
+```text
+admin@example.com
+password
+```
+
 ## Templates
 
 | Template | Use case | Frontend | Backend |
@@ -47,6 +68,12 @@ Generate a SaaS/Admin app:
 
 ```bash
 node packages/create-productflow-kit/bin/productflow.mjs create my-saas --template saas-admin --data jpa --modules auth,rbac,audit-log
+```
+
+Generate a full AI SaaS app:
+
+```bash
+node packages/create-productflow-kit/bin/productflow.mjs create my-ai --template ai-saas --data jpa --modules auth,rbac,ai,file-storage,email,audit-log
 ```
 
 Generate a CRM app:

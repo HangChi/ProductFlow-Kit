@@ -13,8 +13,11 @@ export function buildProjectFiles(context) {
     file("backend/pom.xml", backendPom(context)),
     file("backend/Dockerfile", backendDockerfile(context)),
     file(`${JAVA_ROOT}/Application.java`, backendApplication()),
+    file(`${JAVA_ROOT}/auth/AuthenticatedUser.java`, backendAuthenticatedUser()),
     file(`${JAVA_ROOT}/common/ApiResponse.java`, backendApiResponse()),
-    file(`${JAVA_ROOT}/users/UserController.java`, backendUserController()),
+    file(`${JAVA_ROOT}/audit/AuditLogService.java`, backendAuditLogService()),
+    file(`${JAVA_ROOT}/users/UserController.java`, backendUserController(context)),
+    file(`${JAVA_ROOT}/users/UserService.java`, backendUserService(context)),
     file("backend/src/main/resources/application.yml", backendApplicationYml(context)),
     file("backend/src/main/resources/db/migration/V1__init.sql", backendMigration(context)),
     file("backend/src/test/java/com/productflow/app/SmokeTest.java", backendSmokeTest(context)),
@@ -32,18 +35,24 @@ export function buildProjectFiles(context) {
 
   if (has(context, "auth")) {
     files.push(file(`${JAVA_ROOT}/auth/AuthController.java`, backendAuthController()));
-    files.push(file(`${JAVA_ROOT}/config/SecurityConfig.java`, backendSecurityConfig()));
+    files.push(file(`${JAVA_ROOT}/auth/AuthService.java`, backendAuthService(context)));
+    files.push(file(`${JAVA_ROOT}/auth/SessionAuthFilter.java`, backendSessionAuthFilter()));
+    files.push(file(`${JAVA_ROOT}/config/SecurityConfig.java`, backendSecurityConfig(context)));
   }
 
   if (has(context, "rbac")) {
-    files.push(file(`${JAVA_ROOT}/roles/RoleController.java`, backendRoleController()));
+    files.push(file(`${JAVA_ROOT}/roles/PermissionGuard.java`, backendPermissionGuard(context)));
+    files.push(file(`${JAVA_ROOT}/roles/PermissionService.java`, backendPermissionService()));
+    files.push(file(`${JAVA_ROOT}/roles/RoleController.java`, backendRoleController(context)));
+    files.push(file(`${JAVA_ROOT}/roles/RoleService.java`, backendRoleService()));
     if (frontendKind(context) === "next") {
       files.push(file("frontend/app/roles/page.tsx", frontendRolesPage()));
     }
   }
 
   if (has(context, "ai")) {
-    files.push(file(`${JAVA_ROOT}/ai/AiChatController.java`, backendAiChatController()));
+    files.push(file(`${JAVA_ROOT}/ai/AiCallLogService.java`, backendAiCallLogService(context)));
+    files.push(file(`${JAVA_ROOT}/ai/AiChatController.java`, backendAiChatController(context)));
     files.push(file(`${JAVA_ROOT}/ai/AiProvider.java`, backendAiProvider()));
     files.push(file(`${JAVA_ROOT}/ai/MockAiProvider.java`, backendMockAiProvider()));
     if (frontendKind(context) === "next") {
@@ -52,21 +61,23 @@ export function buildProjectFiles(context) {
   }
 
   if (has(context, "audit-log")) {
-    files.push(file(`${JAVA_ROOT}/audit/AuditLogController.java`, backendAuditLogController()));
+    files.push(file(`${JAVA_ROOT}/audit/AuditLogController.java`, backendAuditLogController(context)));
     if (frontendKind(context) === "next") {
       files.push(file("frontend/app/audit/page.tsx", frontendAuditPage()));
     }
   }
 
   if (has(context, "file-storage")) {
-    files.push(file(`${JAVA_ROOT}/files/FileController.java`, backendFileController()));
+    files.push(file(`${JAVA_ROOT}/files/FileController.java`, backendFileController(context)));
+    files.push(file(`${JAVA_ROOT}/files/FileStorageService.java`, backendFileStorageService(context)));
     if (frontendKind(context) === "next") {
       files.push(file("frontend/app/files/page.tsx", frontendFilesPage()));
     }
   }
 
   if (has(context, "email")) {
-    files.push(file(`${JAVA_ROOT}/email/EmailController.java`, backendEmailController()));
+    files.push(file(`${JAVA_ROOT}/email/EmailController.java`, backendEmailController(context)));
+    files.push(file(`${JAVA_ROOT}/email/EmailService.java`, backendEmailService(context)));
     if (frontendKind(context) === "next") {
       files.push(file("frontend/app/email/page.tsx", frontendEmailPage()));
     }
@@ -237,6 +248,7 @@ SERVER_PORT=${context.backendPort}
 JWT_SECRET=replace-with-a-long-random-secret
 AI_PROVIDER=mock
 OPENAI_API_KEY=
+FILE_STORAGE_DIR=uploads
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USERNAME=
@@ -1650,6 +1662,7 @@ CMD ["npm", "run", "start"]
 function backendPom(context) {
   const dependencies = [
     dependency("org.springframework.boot", "spring-boot-starter-web"),
+    dependency("org.springframework.boot", "spring-boot-starter-jdbc"),
     dependency("org.springframework.boot", "spring-boot-starter-validation"),
     dependency("org.postgresql", "postgresql", undefined, "runtime"),
     dependency("org.flywaydb", "flyway-core"),
@@ -1812,64 +1825,362 @@ ${rows}
 `;
 }
 
-function backendAuthController() {
+function backendAuthenticatedUser() {
   return text`
 package ${JAVA_PACKAGE}.auth;
 
-import ${JAVA_PACKAGE}.common.ApiResponse;
-import java.util.Map;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/api/auth")
-public class AuthController {
-    @PostMapping("/login")
-    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request) {
-        return ApiResponse.ok(Map.of(
-            "token", "dev-token",
-            "email", request.email(),
-            "expiresIn", 3600
-        ));
-    }
-
-    @GetMapping("/me")
-    public ApiResponse<Map<String, Object>> me() {
-        return ApiResponse.ok(Map.of(
-            "id", "usr_demo",
-            "name", "Ada Chen",
-            "email", "ada@example.com",
-            "role", "Owner"
-        ));
-    }
-
-    public record LoginRequest(String email, String password) {
+public record AuthenticatedUser(Long id, String name, String email, String roleKey, String status) {
+    public boolean isActive() {
+        return "active".equalsIgnoreCase(status);
     }
 }
 `;
 }
 
-function backendSecurityConfig() {
+function backendAuthController() {
+  return text`
+package ${JAVA_PACKAGE}.auth;
+
+import ${JAVA_PACKAGE}.common.ApiResponse;
+import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @PostMapping("/register")
+    public ApiResponse<AuthService.SessionResponse> register(@Valid @RequestBody AuthService.RegisterRequest request) {
+        return ApiResponse.ok(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<AuthService.SessionResponse> login(@Valid @RequestBody AuthService.LoginRequest request) {
+        return ApiResponse.ok(authService.login(request));
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<AuthenticatedUser> me(Authentication authentication) {
+        return ApiResponse.ok(currentUser(authentication));
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        authService.logout(extractToken(authorization));
+        return ApiResponse.ok(null);
+    }
+
+    private AuthenticatedUser currentUser(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        return user;
+    }
+
+    private String extractToken(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bearer token required");
+        }
+        return authorization.substring("Bearer ".length());
+    }
+}
+`;
+}
+
+function backendAuthService(context) {
+  const authoritiesForUser = has(context, "rbac")
+    ? text`
+    public List<GrantedAuthority> authoritiesFor(AuthenticatedUser user) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.roleKey().toUpperCase(Locale.ROOT)));
+        jdbc.sql("""
+            SELECT permission_key
+            FROM role_permissions
+            WHERE role_key = :roleKey
+            """)
+            .param("roleKey", user.roleKey())
+            .query(String.class)
+            .list()
+            .forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+        return authorities;
+    }`
+    : text`
+    public List<GrantedAuthority> authoritiesFor(AuthenticatedUser user) {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.roleKey().toUpperCase(Locale.ROOT)));
+    }`;
+
+  return text`
+package ${JAVA_PACKAGE}.auth;
+
+import ${JAVA_PACKAGE}.audit.AuditLogService;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class AuthService {
+    private final JdbcClient jdbc;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+
+    public AuthService(JdbcClient jdbc, PasswordEncoder passwordEncoder, AuditLogService auditLogService) {
+        this.jdbc = jdbc;
+        this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
+    }
+
+    @Transactional
+    public SessionResponse register(RegisterRequest request) {
+        if (findByEmail(request.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");
+        }
+
+        Long userId = jdbc.sql("""
+            INSERT INTO app_users (name, email, password_hash, role_key, status)
+            VALUES (:name, :email, :passwordHash, 'member', 'active')
+            RETURNING id
+            """)
+            .param("name", request.name())
+            .param("email", request.email().toLowerCase(Locale.ROOT))
+            .param("passwordHash", passwordEncoder.encode(request.password()))
+            .query(Long.class)
+            .single();
+
+        AuthenticatedUser user = findUserById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User was not created"));
+        auditLogService.record(user, "User registered", "auth", "email=" + user.email());
+        return createSession(user);
+    }
+
+    @Transactional
+    public SessionResponse login(LoginRequest request) {
+        UserWithPassword user = findByEmail(request.email())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
+
+        if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        }
+
+        if (!"active".equalsIgnoreCase(user.status())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not active");
+        }
+
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(
+            user.id(),
+            user.name(),
+            user.email(),
+            user.roleKey(),
+            user.status()
+        );
+        auditLogService.record(authenticatedUser, "User logged in", "auth", "email=" + user.email());
+        return createSession(authenticatedUser);
+    }
+
+    @Transactional
+    public void logout(String token) {
+        jdbc.sql("""
+            UPDATE auth_sessions
+            SET revoked_at = NOW()
+            WHERE token = :token AND revoked_at IS NULL
+            """)
+            .param("token", token)
+            .update();
+    }
+
+    public Optional<AuthenticatedUser> findUserByToken(String token) {
+        return jdbc.sql("""
+            SELECT u.id, u.name, u.email, u.role_key AS roleKey, u.status
+            FROM auth_sessions s
+            JOIN app_users u ON u.id = s.user_id
+            WHERE s.token = :token
+              AND s.revoked_at IS NULL
+              AND s.expires_at > NOW()
+              AND u.status = 'active'
+            """)
+            .param("token", token)
+            .query(AuthenticatedUser.class)
+            .optional();
+    }
+
+${authoritiesForUser}
+
+    private SessionResponse createSession(AuthenticatedUser user) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        Instant expiresAt = Instant.now().plus(Duration.ofHours(8));
+
+        jdbc.sql("""
+            INSERT INTO auth_sessions (token, user_id, expires_at)
+            VALUES (:token, :userId, :expiresAt)
+            """)
+            .param("token", token)
+            .param("userId", user.id())
+            .param("expiresAt", expiresAt)
+            .update();
+
+        return new SessionResponse(token, user, expiresAt);
+    }
+
+    private Optional<UserWithPassword> findByEmail(String email) {
+        return jdbc.sql("""
+            SELECT id, name, email, role_key AS roleKey, status, password_hash AS passwordHash
+            FROM app_users
+            WHERE lower(email) = lower(:email)
+            """)
+            .param("email", email)
+            .query(UserWithPassword.class)
+            .optional();
+    }
+
+    private Optional<AuthenticatedUser> findUserById(Long id) {
+        return jdbc.sql("""
+            SELECT id, name, email, role_key AS roleKey, status
+            FROM app_users
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .query(AuthenticatedUser.class)
+            .optional();
+    }
+
+    public record RegisterRequest(
+        @NotBlank String name,
+        @Email @NotBlank String email,
+        @NotBlank String password
+    ) {
+    }
+
+    public record LoginRequest(@Email @NotBlank String email, @NotBlank String password) {
+    }
+
+    public record SessionResponse(String token, AuthenticatedUser user, Instant expiresAt) {
+    }
+
+    private record UserWithPassword(
+        Long id,
+        String name,
+        String email,
+        String roleKey,
+        String status,
+        String passwordHash
+    ) {
+    }
+}
+`;
+}
+
+function backendSessionAuthFilter() {
+  return text`
+package ${JAVA_PACKAGE}.auth;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+@Component
+public class SessionAuthFilter extends OncePerRequestFilter {
+    private final AuthService authService;
+
+    public SessionAuthFilter(AuthService authService) {
+        this.authService = authService;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
+        String header = request.getHeader("Authorization");
+
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring("Bearer ".length());
+            authService.findUserByToken(token).ifPresent(user -> {
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    user,
+                    token,
+                    authService.authoritiesFor(user)
+                );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            });
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+`;
+}
+
+function backendSecurityConfig(context) {
   return text`
 package ${JAVA_PACKAGE}.config;
 
+import ${JAVA_PACKAGE}.auth.SessionAuthFilter;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
+    private final SessionAuthFilter sessionAuthFilter;
+
+    public SecurityConfig(SessionAuthFilter sessionAuthFilter) {
+        this.sessionAuthFilter = sessionAuthFilter;
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(sessionAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .build();
     }
 
@@ -1877,95 +2188,689 @@ public class SecurityConfig {
     PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:${context.frontendPort}", "http://localhost:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
 `;
 }
 
-function backendUserController() {
+function backendUserController(context) {
+  const authImports = has(context, "auth")
+    ? text`
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.security.core.Authentication;`
+    : "";
+  const rbacImports = has(context, "rbac")
+    ? text`
+import ${JAVA_PACKAGE}.roles.PermissionGuard;`
+    : "";
+  const guardField = has(context, "rbac")
+    ? text`
+    private final PermissionGuard permissionGuard;`
+    : "";
+  const constructorArgs = has(context, "rbac") ? "UserService userService, PermissionGuard permissionGuard" : "UserService userService";
+  const constructorBody = has(context, "rbac")
+    ? text`
+        this.userService = userService;
+        this.permissionGuard = permissionGuard;`
+    : text`
+        this.userService = userService;`;
+  const authParam = has(context, "auth") ? ", Authentication authentication" : "";
+  const actorArg = has(context, "auth") ? "actor(authentication)" : "null";
+  const actorHelper = has(context, "auth")
+    ? text`
+    private AuthenticatedUser actor(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+            return user;
+        }
+        return null;
+    }`
+    : "";
+  const requireRead = has(context, "rbac") ? "        permissionGuard.require(\"users:read\");\n" : "";
+  const requireWrite = has(context, "rbac") ? "        permissionGuard.require(\"users:write\");\n" : "";
+
   return text`
 package ${JAVA_PACKAGE}.users;
 
 import ${JAVA_PACKAGE}.common.ApiResponse;
+import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+${authImports}${rbacImports}
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    @GetMapping
-    public ApiResponse<List<UserDto>> listUsers() {
-        return ApiResponse.ok(List.of(
-            new UserDto("usr_ada", "Ada Chen", "ada@example.com", "Owner", "active"),
-            new UserDto("usr_ben", "Ben Miller", "ben@example.com", "Admin", "active"),
-            new UserDto("usr_chris", "Chris Zhou", "chris@example.com", "Member", "invited")
-        ));
+    private final UserService userService;
+${guardField}
+
+    public UserController(${constructorArgs}) {
+${constructorBody}
     }
 
-    public record UserDto(String id, String name, String email, String role, String status) {
+    @GetMapping
+    public ApiResponse<List<UserService.UserDto>> listUsers() {
+${requireRead}        return ApiResponse.ok(userService.listUsers());
+    }
+
+    @PostMapping
+    public ApiResponse<UserService.UserDto> createUser(
+        @Valid @RequestBody UserService.CreateUserRequest request${authParam}
+    ) {
+${requireWrite}        return ApiResponse.ok(userService.createUser(request, ${actorArg}));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<UserService.UserDto> updateUser(
+        @PathVariable Long id,
+        @Valid @RequestBody UserService.UpdateUserRequest request${authParam}
+    ) {
+${requireWrite}        return ApiResponse.ok(userService.updateUser(id, request, ${actorArg}));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteUser(@PathVariable Long id${authParam}) {
+${requireWrite}        userService.disableUser(id, ${actorArg});
+        return ApiResponse.ok(null);
+    }
+
+${actorHelper}
+}
+`;
+}
+
+function backendUserService(context) {
+  const passwordEncoderImport = has(context, "auth")
+    ? text`
+import org.springframework.security.crypto.password.PasswordEncoder;`
+    : "";
+  const passwordField = has(context, "auth")
+    ? text`
+    private final PasswordEncoder passwordEncoder;`
+    : "";
+  const constructorArgs = has(context, "auth")
+    ? "JdbcClient jdbc, AuditLogService auditLogService, PasswordEncoder passwordEncoder"
+    : "JdbcClient jdbc, AuditLogService auditLogService";
+  const constructorBody = has(context, "auth")
+    ? text`
+        this.jdbc = jdbc;
+        this.auditLogService = auditLogService;
+        this.passwordEncoder = passwordEncoder;`
+    : text`
+        this.jdbc = jdbc;
+        this.auditLogService = auditLogService;`;
+  const passwordHashLine = has(context, "auth")
+    ? "String passwordHash = passwordEncoder.encode(request.password() == null || request.password().isBlank() ? \"password\" : request.password());"
+    : "String passwordHash = \"{noop}\" + (request.password() == null || request.password().isBlank() ? \"password\" : request.password());";
+
+  return text`
+package ${JAVA_PACKAGE}.users;
+
+import ${JAVA_PACKAGE}.audit.AuditLogService;
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
+${passwordEncoderImport}import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class UserService {
+    private final JdbcClient jdbc;
+    private final AuditLogService auditLogService;
+${passwordField}
+
+    public UserService(${constructorArgs}) {
+${constructorBody}
+    }
+
+    public List<UserDto> listUsers() {
+        return jdbc.sql("""
+            SELECT id, name, email, role_key AS roleKey, status, created_at AS createdAt
+            FROM app_users
+            ORDER BY created_at DESC
+            """)
+            .query(UserDto.class)
+            .list();
+    }
+
+    @Transactional
+    public UserDto createUser(CreateUserRequest request, AuthenticatedUser actor) {
+        ${passwordHashLine}
+        Long id = jdbc.sql("""
+            INSERT INTO app_users (name, email, password_hash, role_key, status)
+            VALUES (:name, :email, :passwordHash, :roleKey, :status)
+            RETURNING id
+            """)
+            .param("name", request.name())
+            .param("email", request.email().toLowerCase(Locale.ROOT))
+            .param("passwordHash", passwordHash)
+            .param("roleKey", normalizeRole(request.roleKey()))
+            .param("status", request.status() == null || request.status().isBlank() ? "active" : request.status())
+            .query(Long.class)
+            .single();
+
+        UserDto user = getUser(id);
+        auditLogService.record(actor, "User created", "users", "userId=" + user.id());
+        return user;
+    }
+
+    @Transactional
+    public UserDto updateUser(Long id, UpdateUserRequest request, AuthenticatedUser actor) {
+        UserDto existing = getUser(id);
+        jdbc.sql("""
+            UPDATE app_users
+            SET name = :name,
+                role_key = :roleKey,
+                status = :status,
+                updated_at = NOW()
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .param("name", request.name() == null || request.name().isBlank() ? existing.name() : request.name())
+            .param("roleKey", request.roleKey() == null || request.roleKey().isBlank() ? existing.roleKey() : normalizeRole(request.roleKey()))
+            .param("status", request.status() == null || request.status().isBlank() ? existing.status() : request.status())
+            .update();
+
+        UserDto user = getUser(id);
+        auditLogService.record(actor, "User updated", "users", "userId=" + user.id());
+        return user;
+    }
+
+    @Transactional
+    public void disableUser(Long id, AuthenticatedUser actor) {
+        getUser(id);
+        jdbc.sql("""
+            UPDATE app_users
+            SET status = 'disabled', updated_at = NOW()
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .update();
+        auditLogService.record(actor, "User disabled", "users", "userId=" + id);
+    }
+
+    private UserDto getUser(Long id) {
+        return jdbc.sql("""
+            SELECT id, name, email, role_key AS roleKey, status, created_at AS createdAt
+            FROM app_users
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .query(UserDto.class)
+            .optional()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private String normalizeRole(String roleKey) {
+        return roleKey == null || roleKey.isBlank() ? "member" : roleKey.toLowerCase(Locale.ROOT);
+    }
+
+    public record UserDto(Long id, String name, String email, String roleKey, String status, Instant createdAt) {
+    }
+
+    public record CreateUserRequest(
+        @NotBlank String name,
+        @Email @NotBlank String email,
+        String password,
+        String roleKey,
+        String status
+    ) {
+    }
+
+    public record UpdateUserRequest(String name, String roleKey, String status) {
     }
 }
 `;
 }
 
-function backendRoleController() {
+function backendRoleController(context) {
+  const authImport = has(context, "auth")
+    ? text`
+import org.springframework.security.core.Authentication;`
+    : "";
+  const authParam = has(context, "auth") ? ", Authentication authentication" : "";
+
   return text`
 package ${JAVA_PACKAGE}.roles;
 
 import ${JAVA_PACKAGE}.common.ApiResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+${authImport}
 
 @RestController
 @RequestMapping("/api/roles")
 public class RoleController {
-    @GetMapping
-    public ApiResponse<List<RoleDto>> listRoles() {
-        return ApiResponse.ok(List.of(
-            new RoleDto("owner", "Owner", "Full workspace and billing access"),
-            new RoleDto("admin", "Admin", "Manage users, roles, and operations"),
-            new RoleDto("member", "Member", "Use product workflows and AI tools")
-        ));
+    private final RoleService roleService;
+    private final PermissionService permissionService;
+    private final PermissionGuard permissionGuard;
+
+    public RoleController(RoleService roleService, PermissionService permissionService, PermissionGuard permissionGuard) {
+        this.roleService = roleService;
+        this.permissionService = permissionService;
+        this.permissionGuard = permissionGuard;
     }
 
-    public record RoleDto(String key, String name, String description) {
+    @GetMapping
+    public ApiResponse<List<RoleService.RoleDto>> listRoles() {
+        permissionGuard.require("roles:read");
+        return ApiResponse.ok(roleService.listRoles());
+    }
+
+    @PostMapping
+    public ApiResponse<RoleService.RoleDto> createRole(@Valid @RequestBody RoleService.SaveRoleRequest request${authParam}) {
+        permissionGuard.require("roles:write");
+        return ApiResponse.ok(roleService.createRole(request));
+    }
+
+    @PutMapping("/{roleKey}")
+    public ApiResponse<RoleService.RoleDto> updateRole(
+        @PathVariable String roleKey,
+        @Valid @RequestBody RoleService.SaveRoleRequest request${authParam}
+    ) {
+        permissionGuard.require("roles:write");
+        return ApiResponse.ok(roleService.updateRole(roleKey, request));
+    }
+
+    @GetMapping("/permissions")
+    public ApiResponse<List<PermissionService.PermissionDto>> listPermissions() {
+        permissionGuard.require("roles:read");
+        return ApiResponse.ok(permissionService.listPermissions());
+    }
+
+    @GetMapping("/menu")
+    public ApiResponse<List<PermissionService.MenuItemDto>> listMenu() {
+        return ApiResponse.ok(permissionService.listMenu());
     }
 }
 `;
 }
 
-function backendAiChatController() {
+function backendRoleService() {
+  return text`
+package ${JAVA_PACKAGE}.roles;
+
+import jakarta.validation.constraints.NotBlank;
+import java.util.List;
+import java.util.Locale;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class RoleService {
+    private final JdbcClient jdbc;
+
+    public RoleService(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    public List<RoleDto> listRoles() {
+        return jdbc.sql("""
+            SELECT r.role_key AS roleKey,
+                   r.name,
+                   r.description,
+                   COUNT(u.id) AS memberCount
+            FROM roles r
+            LEFT JOIN app_users u ON u.role_key = r.role_key AND u.status <> 'disabled'
+            GROUP BY r.role_key, r.name, r.description
+            ORDER BY r.role_key
+            """)
+            .query(RoleDto.class)
+            .list();
+    }
+
+    @Transactional
+    public RoleDto createRole(SaveRoleRequest request) {
+        String roleKey = normalize(request.roleKey());
+        jdbc.sql("""
+            INSERT INTO roles (role_key, name, description)
+            VALUES (:roleKey, :name, :description)
+            """)
+            .param("roleKey", roleKey)
+            .param("name", request.name())
+            .param("description", request.description())
+            .update();
+
+        replacePermissions(roleKey, request.permissions());
+        return getRole(roleKey);
+    }
+
+    @Transactional
+    public RoleDto updateRole(String roleKey, SaveRoleRequest request) {
+        String normalized = normalize(roleKey);
+        jdbc.sql("""
+            UPDATE roles
+            SET name = :name,
+                description = :description
+            WHERE role_key = :roleKey
+            """)
+            .param("roleKey", normalized)
+            .param("name", request.name())
+            .param("description", request.description())
+            .update();
+
+        replacePermissions(normalized, request.permissions());
+        return getRole(normalized);
+    }
+
+    private RoleDto getRole(String roleKey) {
+        return jdbc.sql("""
+            SELECT r.role_key AS roleKey,
+                   r.name,
+                   r.description,
+                   COUNT(u.id) AS memberCount
+            FROM roles r
+            LEFT JOIN app_users u ON u.role_key = r.role_key AND u.status <> 'disabled'
+            WHERE r.role_key = :roleKey
+            GROUP BY r.role_key, r.name, r.description
+            """)
+            .param("roleKey", roleKey)
+            .query(RoleDto.class)
+            .optional()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+    }
+
+    private void replacePermissions(String roleKey, List<String> permissions) {
+        jdbc.sql("DELETE FROM role_permissions WHERE role_key = :roleKey")
+            .param("roleKey", roleKey)
+            .update();
+
+        if (permissions == null) {
+            return;
+        }
+
+        for (String permission : permissions) {
+            jdbc.sql("""
+                INSERT INTO role_permissions (role_key, permission_key)
+                VALUES (:roleKey, :permission)
+                ON CONFLICT DO NOTHING
+                """)
+                .param("roleKey", roleKey)
+                .param("permission", permission)
+                .update();
+        }
+    }
+
+    private String normalize(String roleKey) {
+        if (roleKey == null || roleKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role key is required");
+        }
+        return roleKey.toLowerCase(Locale.ROOT);
+    }
+
+    public record RoleDto(String roleKey, String name, String description, long memberCount) {
+    }
+
+    public record SaveRoleRequest(
+        @NotBlank String roleKey,
+        @NotBlank String name,
+        String description,
+        List<String> permissions
+    ) {
+    }
+}
+`;
+}
+
+function backendPermissionService() {
+  return text`
+package ${JAVA_PACKAGE}.roles;
+
+import java.util.List;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PermissionService {
+    private final JdbcClient jdbc;
+
+    public PermissionService(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    public List<PermissionDto> listPermissions() {
+        return jdbc.sql("""
+            SELECT permission_key AS permissionKey, name, description
+            FROM permissions
+            ORDER BY permission_key
+            """)
+            .query(PermissionDto.class)
+            .list();
+    }
+
+    public List<MenuItemDto> listMenu() {
+        return List.of(
+            new MenuItemDto("dashboard", "Dashboard", "/", "dashboard:view"),
+            new MenuItemDto("users", "Users", "/users", "users:read"),
+            new MenuItemDto("roles", "Roles", "/roles", "roles:read"),
+            new MenuItemDto("ai", "AI Chat", "/ai", "ai:use"),
+            new MenuItemDto("files", "Files", "/files", "files:write"),
+            new MenuItemDto("email", "Email", "/email", "email:send"),
+            new MenuItemDto("audit", "Audit Logs", "/audit", "audit:read"),
+            new MenuItemDto("settings", "Settings", "/settings", "settings:write")
+        );
+    }
+
+    public boolean userHasPermission(Long userId, String permission) {
+        Long count = jdbc.sql("""
+            SELECT COUNT(*)
+            FROM app_users u
+            JOIN role_permissions rp ON rp.role_key = u.role_key
+            WHERE u.id = :userId AND rp.permission_key = :permission
+            """)
+            .param("userId", userId)
+            .param("permission", permission)
+            .query(Long.class)
+            .single();
+        return count != null && count > 0;
+    }
+
+    public record PermissionDto(String permissionKey, String name, String description) {
+    }
+
+    public record MenuItemDto(String key, String label, String path, String permission) {
+    }
+}
+`;
+}
+
+function backendPermissionGuard(context) {
+  if (!has(context, "auth")) {
+    return text`
+package ${JAVA_PACKAGE}.roles;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class PermissionGuard {
+    public void require(String permission) {
+        // Templates without auth expose RBAC metadata but do not enforce request permissions.
+    }
+}
+`;
+  }
+
+  return text`
+package ${JAVA_PACKAGE}.roles;
+
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class PermissionGuard {
+    private final PermissionService permissionService;
+
+    public PermissionGuard(PermissionService permissionService) {
+        this.permissionService = permissionService;
+    }
+
+    public void require(String permission) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        if (!permissionService.userHasPermission(user.id(), permission)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Missing permission: " + permission);
+        }
+    }
+}
+`;
+}
+
+function backendAiChatController(context) {
+  const authImports = has(context, "auth")
+    ? text`
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.security.core.Authentication;`
+    : "";
+  const authParam = has(context, "auth") ? ", Authentication authentication" : "";
+  const actorArg = has(context, "auth") ? "actor(authentication)" : "null";
+  const actorHelper = has(context, "auth")
+    ? text`
+    private AuthenticatedUser actor(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+            return user;
+        }
+        return null;
+    }`
+    : "";
+  const rbacField = has(context, "rbac")
+    ? text`
+    private final ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard;`
+    : "";
+  const constructorArgs = has(context, "rbac")
+    ? `AiProvider aiProvider, AiCallLogService aiCallLogService, ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard`
+    : "AiProvider aiProvider, AiCallLogService aiCallLogService";
+  const constructorBody = has(context, "rbac")
+    ? text`
+        this.aiProvider = aiProvider;
+        this.aiCallLogService = aiCallLogService;
+        this.permissionGuard = permissionGuard;`
+    : text`
+        this.aiProvider = aiProvider;
+        this.aiCallLogService = aiCallLogService;`;
+  const requireAi = has(context, "rbac") ? "        permissionGuard.require(\"ai:use\");\n" : "";
+
   return text`
 package ${JAVA_PACKAGE}.ai;
 
 import ${JAVA_PACKAGE}.common.ApiResponse;
 import java.time.Instant;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+${authImports}
 
 @RestController
 @RequestMapping("/api/ai")
 public class AiChatController {
     private final AiProvider aiProvider;
+    private final AiCallLogService aiCallLogService;
+${rbacField}
 
-    public AiChatController(AiProvider aiProvider) {
-        this.aiProvider = aiProvider;
+    public AiChatController(${constructorArgs}) {
+${constructorBody}
     }
 
     @PostMapping("/chat")
-    public ApiResponse<ChatResponse> chat(@RequestBody ChatRequest request) {
-        return ApiResponse.ok(new ChatResponse(aiProvider.complete(request.message()), Instant.now().toString()));
+    public ApiResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request${authParam}) {
+${requireAi}        String response = aiProvider.complete(request.message());
+        aiCallLogService.record(${actorArg}, "mock", request.message(), response);
+        return ApiResponse.ok(new ChatResponse(response, Instant.now().toString()));
     }
 
     public record ChatRequest(String message) {
     }
 
     public record ChatResponse(String message, String createdAt) {
+    }
+
+${actorHelper}
+}
+`;
+}
+
+function backendAiCallLogService(context) {
+  return text`
+package ${JAVA_PACKAGE}.ai;
+
+import ${JAVA_PACKAGE}.audit.AuditLogService;
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AiCallLogService {
+    private final JdbcClient jdbc;
+    private final AuditLogService auditLogService;
+
+    public AiCallLogService(JdbcClient jdbc, AuditLogService auditLogService) {
+        this.jdbc = jdbc;
+        this.auditLogService = auditLogService;
+    }
+
+    @Transactional
+    public void record(AuthenticatedUser actor, String provider, String prompt, String response) {
+        jdbc.sql("""
+            INSERT INTO ai_calls (user_id, provider, prompt, response, prompt_tokens, completion_tokens)
+            VALUES (:userId, :provider, :prompt, :response, :promptTokens, :completionTokens)
+            """)
+            .param("userId", actor == null ? null : actor.id())
+            .param("provider", provider)
+            .param("prompt", prompt)
+            .param("response", response)
+            .param("promptTokens", estimateTokens(prompt))
+            .param("completionTokens", estimateTokens(response))
+            .update();
+        auditLogService.record(actor, "AI chat completed", "ai", "provider=" + provider);
+    }
+
+    private int estimateTokens(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
+        return Math.max(1, value.length() / 4);
     }
 }
 `;
@@ -1997,7 +2902,84 @@ public class MockAiProvider implements AiProvider {
 `;
 }
 
-function backendAuditLogController() {
+function backendAuditLogService() {
+  return text`
+package ${JAVA_PACKAGE}.audit;
+
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AuditLogService {
+    private final JdbcClient jdbc;
+
+    public AuditLogService(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
+
+    public List<AuditLogDto> listLogs() {
+        return jdbc.sql("""
+            SELECT id,
+                   actor_email AS actorEmail,
+                   action,
+                   scope,
+                   metadata,
+                   created_at AS createdAt
+            FROM audit_logs
+            ORDER BY created_at DESC
+            LIMIT 100
+            """)
+            .query(AuditLogDto.class)
+            .list();
+    }
+
+    @Transactional
+    public void record(AuthenticatedUser actor, String action, String scope, String metadata) {
+        jdbc.sql("""
+            INSERT INTO audit_logs (actor_user_id, actor_email, action, scope, metadata)
+            VALUES (:actorUserId, :actorEmail, :action, :scope, :metadata)
+            """)
+            .param("actorUserId", actor == null ? null : actor.id())
+            .param("actorEmail", actor == null ? "system" : actor.email())
+            .param("action", action)
+            .param("scope", scope)
+            .param("metadata", metadata)
+            .update();
+    }
+
+    public record AuditLogDto(
+        Long id,
+        String actorEmail,
+        String action,
+        String scope,
+        String metadata,
+        Instant createdAt
+    ) {
+    }
+}
+`;
+}
+
+function backendAuditLogController(context) {
+  const guardField = has(context, "rbac")
+    ? text`
+    private final ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard;`
+    : "";
+  const constructorArgs = has(context, "rbac")
+    ? `AuditLogService auditLogService, ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard`
+    : "AuditLogService auditLogService";
+  const constructorBody = has(context, "rbac")
+    ? text`
+        this.auditLogService = auditLogService;
+        this.permissionGuard = permissionGuard;`
+    : text`
+        this.auditLogService = auditLogService;`;
+  const requireAudit = has(context, "rbac") ? "        permissionGuard.require(\"audit:read\");\n" : "";
+
   return text`
 package ${JAVA_PACKAGE}.audit;
 
@@ -2010,74 +2992,455 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/audit-logs")
 public class AuditLogController {
-    @GetMapping
-    public ApiResponse<List<AuditLogDto>> listAuditLogs() {
-        return ApiResponse.ok(List.of(
-            new AuditLogDto("log_1", "User invited", "Ada Chen", "auth"),
-            new AuditLogDto("log_2", "Role permissions updated", "Ben Miller", "rbac"),
-            new AuditLogDto("log_3", "AI prompt published", "System", "ai")
-        ));
+    private final AuditLogService auditLogService;
+${guardField}
+
+    public AuditLogController(${constructorArgs}) {
+${constructorBody}
     }
 
-    public record AuditLogDto(String id, String action, String actor, String scope) {
+    @GetMapping
+    public ApiResponse<List<AuditLogService.AuditLogDto>> listAuditLogs() {
+${requireAudit}        return ApiResponse.ok(auditLogService.listLogs());
     }
 }
 `;
 }
 
-function backendFileController() {
+function backendFileController(context) {
+  const authImports = has(context, "auth")
+    ? text`
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.security.core.Authentication;`
+    : "";
+  const authParam = has(context, "auth") ? ", Authentication authentication" : "";
+  const actorArg = has(context, "auth") ? "actor(authentication)" : "null";
+  const actorHelper = has(context, "auth")
+    ? text`
+    private AuthenticatedUser actor(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+            return user;
+        }
+        return null;
+    }`
+    : "";
+  const guardField = has(context, "rbac")
+    ? text`
+    private final ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard;`
+    : "";
+  const constructorArgs = has(context, "rbac")
+    ? `FileStorageService fileStorageService, ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard`
+    : "FileStorageService fileStorageService";
+  const constructorBody = has(context, "rbac")
+    ? text`
+        this.fileStorageService = fileStorageService;
+        this.permissionGuard = permissionGuard;`
+    : text`
+        this.fileStorageService = fileStorageService;`;
+  const requireRead = has(context, "rbac") ? "        permissionGuard.require(\"files:read\");\n" : "";
+  const requireWrite = has(context, "rbac") ? "        permissionGuard.require(\"files:write\");\n" : "";
+
   return text`
 package ${JAVA_PACKAGE}.files;
 
 import ${JAVA_PACKAGE}.common.ApiResponse;
+import java.io.IOException;
 import java.util.List;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+${authImports}
 
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
-    @GetMapping
-    public ApiResponse<List<FileAssetDto>> listFiles() {
-        return ApiResponse.ok(List.of(
-            new FileAssetDto("file_1", "onboarding.csv", "text/csv", 4821),
-            new FileAssetDto("file_2", "usage-report.pdf", "application/pdf", 108245)
-        ));
+    private final FileStorageService fileStorageService;
+${guardField}
+
+    public FileController(${constructorArgs}) {
+${constructorBody}
     }
 
-    public record FileAssetDto(String id, String name, String contentType, long size) {
+    @GetMapping
+    public ApiResponse<List<FileStorageService.FileAssetDto>> listFiles() {
+${requireRead}        return ApiResponse.ok(fileStorageService.listFiles());
+    }
+
+    @PostMapping
+    public ApiResponse<FileStorageService.FileAssetDto> upload(
+        @RequestParam("file") MultipartFile file${authParam}
+    ) throws IOException {
+${requireWrite}        return ApiResponse.ok(fileStorageService.store(file, ${actorArg}));
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<Resource> download(@PathVariable Long id) throws IOException {
+${requireRead}        FileStorageService.DownloadableFile asset = fileStorageService.loadAsResource(id);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(asset.name()).build().toString())
+            .header(HttpHeaders.CONTENT_TYPE, asset.contentType())
+            .body(asset.resource());
+    }
+
+${actorHelper}
+}
+`;
+}
+
+function backendFileStorageService(context) {
+  return text`
+package ${JAVA_PACKAGE}.files;
+
+import ${JAVA_PACKAGE}.audit.AuditLogService;
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class FileStorageService {
+    private final JdbcClient jdbc;
+    private final AuditLogService auditLogService;
+    private final Path storageDir;
+
+    public FileStorageService(
+        JdbcClient jdbc,
+        AuditLogService auditLogService,
+        @Value("\${productflow.files.storage-dir:uploads}") String storageDir
+    ) {
+        this.jdbc = jdbc;
+        this.auditLogService = auditLogService;
+        this.storageDir = Path.of(storageDir).toAbsolutePath().normalize();
+    }
+
+    public List<FileAssetDto> listFiles() {
+        return jdbc.sql("""
+            SELECT id,
+                   name,
+                   content_type AS contentType,
+                   size_bytes AS sizeBytes,
+                   '/api/files/' || id || '/download' AS downloadUrl,
+                   created_at AS createdAt
+            FROM file_assets
+            ORDER BY created_at DESC
+            """)
+            .query(FileAssetDto.class)
+            .list();
+    }
+
+    @Transactional
+    public FileAssetDto store(MultipartFile file, AuthenticatedUser actor) throws IOException {
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
+        }
+
+        Files.createDirectories(storageDir);
+        String originalName = sanitize(file.getOriginalFilename());
+        String storageName = UUID.randomUUID() + "-" + originalName;
+        Path destination = storageDir.resolve(storageName).normalize();
+        Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+
+        Long id = jdbc.sql("""
+            INSERT INTO file_assets (owner_user_id, name, content_type, size_bytes, storage_path)
+            VALUES (:ownerUserId, :name, :contentType, :sizeBytes, :storagePath)
+            RETURNING id
+            """)
+            .param("ownerUserId", actor == null ? null : actor.id())
+            .param("name", originalName)
+            .param("contentType", file.getContentType() == null ? "application/octet-stream" : file.getContentType())
+            .param("sizeBytes", file.getSize())
+            .param("storagePath", destination.toString())
+            .query(Long.class)
+            .single();
+
+        auditLogService.record(actor, "File uploaded", "files", "fileId=" + id);
+        return getFile(id);
+    }
+
+    public DownloadableFile loadAsResource(Long id) throws MalformedURLException {
+        StoredFile file = jdbc.sql("""
+            SELECT id,
+                   name,
+                   content_type AS contentType,
+                   size_bytes AS sizeBytes,
+                   storage_path AS storagePath
+            FROM file_assets
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .query(StoredFile.class)
+            .optional()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found"));
+
+        Resource resource = new UrlResource(Path.of(file.storagePath()).toUri());
+        if (!resource.exists()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Stored file is missing");
+        }
+        return new DownloadableFile(file.name(), file.contentType(), resource);
+    }
+
+    private FileAssetDto getFile(Long id) {
+        return jdbc.sql("""
+            SELECT id,
+                   name,
+                   content_type AS contentType,
+                   size_bytes AS sizeBytes,
+                   '/api/files/' || id || '/download' AS downloadUrl,
+                   created_at AS createdAt
+            FROM file_assets
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .query(FileAssetDto.class)
+            .single();
+    }
+
+    private String sanitize(String fileName) {
+        String name = fileName == null || fileName.isBlank() ? "upload.bin" : fileName;
+        return name.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+    public record FileAssetDto(Long id, String name, String contentType, long sizeBytes, String downloadUrl, Instant createdAt) {
+    }
+
+    public record DownloadableFile(String name, String contentType, Resource resource) {
+    }
+
+    private record StoredFile(Long id, String name, String contentType, long sizeBytes, String storagePath) {
     }
 }
 `;
 }
 
-function backendEmailController() {
+function backendEmailController(context) {
+  const authImports = has(context, "auth")
+    ? text`
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import org.springframework.security.core.Authentication;`
+    : "";
+  const authParam = has(context, "auth") ? ", Authentication authentication" : "";
+  const actorArg = has(context, "auth") ? "actor(authentication)" : "null";
+  const actorHelper = has(context, "auth")
+    ? text`
+    private AuthenticatedUser actor(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+            return user;
+        }
+        return null;
+    }`
+    : "";
+  const guardField = has(context, "rbac")
+    ? text`
+    private final ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard;`
+    : "";
+  const constructorArgs = has(context, "rbac")
+    ? `EmailService emailService, ${JAVA_PACKAGE}.roles.PermissionGuard permissionGuard`
+    : "EmailService emailService";
+  const constructorBody = has(context, "rbac")
+    ? text`
+        this.emailService = emailService;
+        this.permissionGuard = permissionGuard;`
+    : text`
+        this.emailService = emailService;`;
+  const requireSend = has(context, "rbac") ? "        permissionGuard.require(\"email:send\");\n" : "";
+
   return text`
 package ${JAVA_PACKAGE}.email;
 
 import ${JAVA_PACKAGE}.common.ApiResponse;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+${authImports}
 
 @RestController
 @RequestMapping("/api/email")
 public class EmailController {
-    @PostMapping("/preview")
-    public ApiResponse<EmailPreview> preview(@RequestBody EmailRequest request) {
-        return ApiResponse.ok(new EmailPreview(
-            request.to(),
-            request.subject(),
-            "Rendered template: " + request.templateKey()
-        ));
+    private final EmailService emailService;
+${guardField}
+
+    public EmailController(${constructorArgs}) {
+${constructorBody}
     }
 
-    public record EmailRequest(String to, String subject, String templateKey) {
+    @PostMapping("/preview")
+    public ApiResponse<EmailService.EmailPreview> preview(@Valid @RequestBody EmailService.EmailRequest request) {
+        return ApiResponse.ok(emailService.preview(request));
+    }
+
+    @PostMapping("/send")
+    public ApiResponse<EmailService.EmailMessageDto> send(
+        @Valid @RequestBody EmailService.EmailRequest request${authParam}
+    ) {
+${requireSend}        return ApiResponse.ok(emailService.send(request, ${actorArg}));
+    }
+
+    @GetMapping("/messages")
+    public ApiResponse<List<EmailService.EmailMessageDto>> listMessages() {
+${requireSend}        return ApiResponse.ok(emailService.listMessages());
+    }
+
+${actorHelper}
+}
+`;
+}
+
+function backendEmailService(context) {
+  return text`
+package ${JAVA_PACKAGE}.email;
+
+import ${JAVA_PACKAGE}.audit.AuditLogService;
+import ${JAVA_PACKAGE}.auth.AuthenticatedUser;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class EmailService {
+    private final JdbcClient jdbc;
+    private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final AuditLogService auditLogService;
+
+    public EmailService(
+        JdbcClient jdbc,
+        ObjectProvider<JavaMailSender> mailSenderProvider,
+        AuditLogService auditLogService
+    ) {
+        this.jdbc = jdbc;
+        this.mailSenderProvider = mailSenderProvider;
+        this.auditLogService = auditLogService;
+    }
+
+    public EmailPreview preview(EmailRequest request) {
+        return new EmailPreview(request.to(), request.subject(), renderBody(request));
+    }
+
+    @Transactional
+    public EmailMessageDto send(EmailRequest request, AuthenticatedUser actor) {
+        String body = renderBody(request);
+        String status = "sent";
+
+        try {
+            JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+            if (mailSender == null) {
+                status = "queued";
+            } else {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setTo(request.to());
+                message.setSubject(request.subject());
+                message.setText(body);
+                mailSender.send(message);
+            }
+        } catch (RuntimeException ex) {
+            status = "failed:" + ex.getClass().getSimpleName();
+        }
+
+        Long id = jdbc.sql("""
+            INSERT INTO email_messages (sender_user_id, recipient, subject, body, template_key, status)
+            VALUES (:senderUserId, :recipient, :subject, :body, :templateKey, :status)
+            RETURNING id
+            """)
+            .param("senderUserId", actor == null ? null : actor.id())
+            .param("recipient", request.to())
+            .param("subject", request.subject())
+            .param("body", body)
+            .param("templateKey", request.templateKey())
+            .param("status", status)
+            .query(Long.class)
+            .single();
+
+        auditLogService.record(actor, "Email message processed", "email", "emailId=" + id + ",status=" + status);
+        return getMessage(id);
+    }
+
+    public List<EmailMessageDto> listMessages() {
+        return jdbc.sql("""
+            SELECT id,
+                   recipient,
+                   subject,
+                   template_key AS templateKey,
+                   status,
+                   created_at AS createdAt
+            FROM email_messages
+            ORDER BY created_at DESC
+            LIMIT 100
+            """)
+            .query(EmailMessageDto.class)
+            .list();
+    }
+
+    private EmailMessageDto getMessage(Long id) {
+        return jdbc.sql("""
+            SELECT id,
+                   recipient,
+                   subject,
+                   template_key AS templateKey,
+                   status,
+                   created_at AS createdAt
+            FROM email_messages
+            WHERE id = :id
+            """)
+            .param("id", id)
+            .query(EmailMessageDto.class)
+            .single();
+    }
+
+    private String renderBody(EmailRequest request) {
+        return "Template " + request.templateKey() + "\\n\\n" + request.body();
+    }
+
+    public record EmailRequest(
+        @Email @NotBlank String to,
+        @NotBlank String subject,
+        @NotBlank String templateKey,
+        @NotBlank String body
+    ) {
     }
 
     public record EmailPreview(String to, String subject, String body) {
+    }
+
+    public record EmailMessageDto(
+        Long id,
+        String recipient,
+        String subject,
+        String templateKey,
+        String status,
+        Instant createdAt
+    ) {
     }
 }
 `;
@@ -2108,11 +3471,19 @@ public class UserEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+    @Column(name = "role_key", nullable = false)
+    private String roleKey = "member";
+
     @Column(nullable = false)
     private String status = "active";
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    private Instant updatedAt;
 
     public Long getId() {
         return id;
@@ -2150,8 +3521,8 @@ public class RoleEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String key;
+    @Column(name = "role_key", nullable = false, unique = true)
+    private String roleKey;
 
     @Column(nullable = false)
     private String name;
@@ -2187,8 +3558,11 @@ public record UserRecord(
     @TableId Long id,
     String name,
     String email,
+    String passwordHash,
+    String roleKey,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }
 `;
@@ -2217,7 +3591,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @TableName("roles")
 public record RoleRecord(
     @TableId Long id,
-    String key,
+    String roleKey,
     String name
 ) {
 }
@@ -2281,6 +3655,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
 ${jpaConfig}${mailConfig}
 
 productflow:
@@ -2288,6 +3666,8 @@ productflow:
   data-layer: ${context.dataLayer}
   ai:
     provider: \${AI_PROVIDER:mock}
+  files:
+    storage-dir: \${FILE_STORAGE_DIR:uploads}
 
 ${mybatisConfig}
 `;
@@ -2299,27 +3679,51 @@ function backendMigration(context) {
   id BIGSERIAL PRIMARY KEY,
   name VARCHAR(160) NOT NULL,
   email VARCHAR(240) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role_key VARCHAR(80) NOT NULL DEFAULT 'member',
   status VARCHAR(40) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ
+);`,
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  actor_user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
+  actor_email VARCHAR(240) NOT NULL DEFAULT 'system',
+  action VARCHAR(240) NOT NULL,
+  scope VARCHAR(120) NOT NULL,
+  metadata TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`,
   ];
 
-  if (has(context, "rbac")) {
-    statements.push(`CREATE TABLE IF NOT EXISTS roles (
+  if (has(context, "auth")) {
+    statements.push(`CREATE TABLE IF NOT EXISTS auth_sessions (
   id BIGSERIAL PRIMARY KEY,
-  key VARCHAR(80) NOT NULL UNIQUE,
-  name VARCHAR(120) NOT NULL,
-  description TEXT
+  token VARCHAR(160) NOT NULL UNIQUE,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`);
   }
 
-  if (has(context, "audit-log")) {
-    statements.push(`CREATE TABLE IF NOT EXISTS audit_logs (
+  if (has(context, "rbac")) {
+    statements.push(`CREATE TABLE IF NOT EXISTS roles (
   id BIGSERIAL PRIMARY KEY,
-  actor VARCHAR(160) NOT NULL,
-  action VARCHAR(240) NOT NULL,
-  scope VARCHAR(120) NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  role_key VARCHAR(80) NOT NULL UNIQUE,
+  name VARCHAR(120) NOT NULL,
+  description TEXT
+);`);
+    statements.push(`CREATE TABLE IF NOT EXISTS permissions (
+  id BIGSERIAL PRIMARY KEY,
+  permission_key VARCHAR(120) NOT NULL UNIQUE,
+  name VARCHAR(160) NOT NULL,
+  description TEXT
+);`);
+    statements.push(`CREATE TABLE IF NOT EXISTS role_permissions (
+  role_key VARCHAR(80) NOT NULL REFERENCES roles(role_key) ON DELETE CASCADE,
+  permission_key VARCHAR(120) NOT NULL REFERENCES permissions(permission_key) ON DELETE CASCADE,
+  PRIMARY KEY (role_key, permission_key)
 );`);
   }
 
@@ -2332,7 +3736,10 @@ function backendMigration(context) {
 );`);
     statements.push(`CREATE TABLE IF NOT EXISTS ai_calls (
   id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   provider VARCHAR(80) NOT NULL,
+  prompt TEXT NOT NULL,
+  response TEXT NOT NULL,
   prompt_tokens INTEGER NOT NULL DEFAULT 0,
   completion_tokens INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -2342,9 +3749,11 @@ function backendMigration(context) {
   if (has(context, "file-storage")) {
     statements.push(`CREATE TABLE IF NOT EXISTS file_assets (
   id BIGSERIAL PRIMARY KEY,
+  owner_user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   name VARCHAR(240) NOT NULL,
   content_type VARCHAR(120) NOT NULL,
   size_bytes BIGINT NOT NULL,
+  storage_path TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`);
   }
@@ -2357,6 +3766,62 @@ function backendMigration(context) {
   body TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );`);
+    statements.push(`CREATE TABLE IF NOT EXISTS email_messages (
+  id BIGSERIAL PRIMARY KEY,
+  sender_user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
+  recipient VARCHAR(240) NOT NULL,
+  subject VARCHAR(240) NOT NULL,
+  body TEXT NOT NULL,
+  template_key VARCHAR(120) NOT NULL,
+  status VARCHAR(80) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);`);
+  }
+
+  statements.push(`INSERT INTO app_users (name, email, password_hash, role_key, status)
+VALUES ('Admin User', 'admin@example.com', '{noop}password', 'owner', 'active')
+ON CONFLICT (email) DO NOTHING;`);
+
+  if (has(context, "rbac")) {
+    statements.push(`INSERT INTO roles (role_key, name, description) VALUES
+  ('owner', 'Owner', 'Full workspace, billing, and security access'),
+  ('admin', 'Admin', 'Manage users, roles, content, and operations'),
+  ('member', 'Member', 'Use product workflows and assigned tools')
+ON CONFLICT (role_key) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description;`);
+    statements.push(`INSERT INTO permissions (permission_key, name, description) VALUES
+  ('dashboard:view', 'View dashboard', 'View workspace dashboard and metrics'),
+  ('users:read', 'Read users', 'View users and profile metadata'),
+  ('users:write', 'Write users', 'Create, update, and disable users'),
+  ('roles:read', 'Read roles', 'View roles, permissions, and menus'),
+  ('roles:write', 'Write roles', 'Create and update roles and permissions'),
+  ('audit:read', 'Read audit logs', 'View audit trail entries'),
+  ('ai:use', 'Use AI', 'Use AI chat and prompt tools'),
+  ('files:read', 'Read files', 'List and download file assets'),
+  ('files:write', 'Write files', 'Upload and manage file assets'),
+  ('email:send', 'Send email', 'Preview and send email messages'),
+  ('settings:write', 'Write settings', 'Manage workspace settings')
+ON CONFLICT (permission_key) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description;`);
+    statements.push(`INSERT INTO role_permissions (role_key, permission_key)
+SELECT 'owner', permission_key FROM permissions
+ON CONFLICT DO NOTHING;`);
+    statements.push(`INSERT INTO role_permissions (role_key, permission_key) VALUES
+  ('admin', 'dashboard:view'),
+  ('admin', 'users:read'),
+  ('admin', 'users:write'),
+  ('admin', 'roles:read'),
+  ('admin', 'audit:read'),
+  ('admin', 'ai:use'),
+  ('admin', 'files:read'),
+  ('admin', 'files:write'),
+  ('admin', 'email:send'),
+  ('member', 'dashboard:view'),
+  ('member', 'ai:use'),
+  ('member', 'files:read')
+ON CONFLICT DO NOTHING;`);
   }
 
   for (const resource of blueprintResources(context)) {

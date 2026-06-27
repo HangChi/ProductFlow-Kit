@@ -100,14 +100,29 @@ describe("project generation", () => {
     assert.equal(result.dataLayer, "jpa");
     assert.deepEqual(result.modules, ["auth", "rbac", "audit-log"]);
     assertFile(targetDir, "frontend/app/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/auth/AuthService.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/auth/SessionAuthFilter.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserEntity.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/roles/PermissionGuard.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/roles/PermissionService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/roles/RoleController.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/roles/RoleService.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/audit/AuditLogService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/audit/AuditLogController.java");
     assertNoFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiChatController.java");
 
     const pom = readFile(targetDir, "backend/pom.xml");
     assert.match(pom, /spring-boot-starter-data-jpa/);
+    assert.match(pom, /spring-boot-starter-jdbc/);
     assert.doesNotMatch(pom, /mybatis-plus-spring-boot3-starter/);
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /password_hash/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS auth_sessions/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS permissions/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS role_permissions/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS audit_logs/);
   });
 
   test("supports dry-run without writing files", async () => {
@@ -171,6 +186,7 @@ describe("project generation", () => {
     assert.equal(result.dataLayer, "mybatis");
     assert.deepEqual(result.modules, ["auth", "rbac", "ai", "audit-log"]);
     assertFile(targetDir, "frontend/app/ai/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiCallLogService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiChatController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserMapper.java");
     assertNoFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserEntity.java");
@@ -181,6 +197,8 @@ describe("project generation", () => {
 
     const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
     assert.match(migration, /CREATE TABLE IF NOT EXISTS ai_prompts/);
+    assert.match(migration, /prompt TEXT NOT NULL/);
+    assert.match(migration, /response TEXT NOT NULL/);
   });
 
   test("adds optional file-storage and email modules", async () => {
@@ -198,7 +216,14 @@ describe("project generation", () => {
     assertFile(targetDir, "frontend/app/files/page.tsx");
     assertFile(targetDir, "frontend/app/email/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/files/FileController.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/files/FileStorageService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/email/EmailController.java");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/email/EmailService.java");
+
+    const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS file_assets/);
+    assert.match(migration, /storage_path TEXT NOT NULL/);
+    assert.match(migration, /CREATE TABLE IF NOT EXISTS email_messages/);
   });
 
   test("adds AI module to an existing saas-admin project", async () => {
@@ -223,6 +248,11 @@ describe("project generation", () => {
     assertFile(targetDir, "frontend/app/ai/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/ai/AiChatController.java");
     assertFile(targetDir, "backend/src/main/resources/db/migration/V2__add_ai.sql");
+
+    const aiMigration = readFile(targetDir, "backend/src/main/resources/db/migration/V2__add_ai.sql");
+    assert.match(aiMigration, /user_id BIGINT REFERENCES app_users/);
+    assert.match(aiMigration, /prompt TEXT NOT NULL/);
+    assert.match(aiMigration, /response TEXT NOT NULL/);
 
     const manifest = JSON.parse(readFile(targetDir, "productflow.template.json"));
     assert.equal(manifest.modules.includes("ai"), true);
