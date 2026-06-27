@@ -1,0 +1,22 @@
+{
+  "id": "saas-admin",
+  "name": "SaaS Admin",
+  "description": "A product-grade SaaS/admin starter with auth, RBAC, dashboard, settings, and prototype routes.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "file-storage", "email", "audit-log"],
+  "defaultModules": ["auth", "rbac", "audit-log"],
+  "requiredModules": [],
+  "variables": {
+    "appName": "ProductFlow SaaS",
+    "javaPackage": "com.productflow.app"
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Run docker compose up --build"
+  ]
+}

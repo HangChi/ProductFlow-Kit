@@ -1,0 +1,23 @@
+{
+  "name": "create-productflow-kit",
+  "version": "0.1.0",
+  "description": "CLI for generating ProductFlow Kit starter projects.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-productflow-kit": "./bin/productflow.mjs",
+    "productflow": "./bin/productflow.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

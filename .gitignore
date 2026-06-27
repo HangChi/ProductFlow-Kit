@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+.next/
+target/
+build/
+.env
+.env.*
+!.env.example
+*.log
+tmp/
+generated/

@@ -1,0 +1,23 @@
+{
+  "id": "ai-saas",
+  "name": "AI SaaS",
+  "description": "A SaaS starter with AI chat, prompt management, call history, usage dashboards, and a mock AI provider.",
+  "stack": {
+    "frontend": "Next.js + React + TypeScript + Tailwind CSS",
+    "backend": "Spring Boot + Java 21",
+    "database": "PostgreSQL",
+    "runtime": "Docker Compose"
+  },
+  "modules": ["auth", "rbac", "ai", "file-storage", "email", "audit-log"],
+  "defaultModules": ["auth", "rbac", "ai", "audit-log"],
+  "requiredModules": ["ai"],
+  "variables": {
+    "appName": "ProductFlow AI",
+    "javaPackage": "com.productflow.app"
+  },
+  "postInstall": [
+    "Copy .env.example to .env",
+    "Set AI_PROVIDER=mock for local development",
+    "Run docker compose up --build"
+  ]
+}

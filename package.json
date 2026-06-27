@@ -1,0 +1,18 @@
+{
+  "name": "productflow-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source product starter templates for SaaS, admin, and AI applications.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node --test packages/create-productflow-kit/test/*.test.mjs",
+    "create": "node packages/create-productflow-kit/bin/productflow.mjs"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
