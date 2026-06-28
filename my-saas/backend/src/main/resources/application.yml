@@ -1,0 +1,33 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: my-saas
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/productflow}
+    username: ${DATABASE_USERNAME:productflow}
+    password: ${DATABASE_PASSWORD:productflow}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+
+productflow:
+  template: saas-admin
+  data-layer: jpa
+  ai:
+    provider: ${AI_PROVIDER:mock}
+  files:
+    storage-dir: ${FILE_STORAGE_DIR:uploads}

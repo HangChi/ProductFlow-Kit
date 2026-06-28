@@ -1,0 +1,17 @@
+{
+  "name": "my-saas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:backend": "mvn -f backend/pom.xml spring-boot:run",
+    "test:backend": "mvn -f backend/pom.xml test",
+    "test": "npm run test:frontend && npm run test:backend",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test:frontend": "npm --prefix frontend test"
+  },
+  "workspaces": [
+    "frontend"
+  ]
+}
