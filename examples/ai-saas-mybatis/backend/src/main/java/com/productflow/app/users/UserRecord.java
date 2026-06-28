@@ -9,7 +9,10 @@ public record UserRecord(
     @TableId Long id,
     String name,
     String email,
+    String passwordHash,
+    String roleKey,
     String status,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

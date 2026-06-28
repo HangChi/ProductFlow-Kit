@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 @TableName("roles")
 public record RoleRecord(
     @TableId Long id,
-    String key,
+    String roleKey,
     String name
 ) {
 }

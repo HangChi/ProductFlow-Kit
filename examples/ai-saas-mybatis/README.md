@@ -21,6 +21,11 @@ Frontend: http://localhost:3000
 
 Backend: http://localhost:8080
 
+## Language
+
+- Generated language mode: `bilingual`.
+- Use `--language zh`, `--language en`, or `--language bilingual`. Bilingual frontend projects include an in-app language switch.
+
 ## Useful Commands
 
 ```bash

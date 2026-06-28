@@ -21,11 +21,19 @@ public class UserEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+    @Column(name = "role_key", nullable = false)
+    private String roleKey = "member";
+
     @Column(nullable = false)
     private String status = "active";
 
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
+
+    private Instant updatedAt;
 
     public Long getId() {
         return id;

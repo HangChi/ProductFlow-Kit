@@ -568,17 +568,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: "#d6d9e0",
-        ink: "#111827",
-        muted: "#64748b",
+        border: "#d8dee9",
+        ink: "#18212f",
+        muted: "#687386",
         panel: "#ffffff",
-        surface: "#f7f7f2",
-        accent: "#0f766e",
-        gold: "#b7791f",
-        danger: "#b91c1c",
+        surface: "#f5f7fb",
+        surfaceStrong: "#eef2f8",
+        accent: "#2563eb",
+        accentSoft: "#dbeafe",
+        success: "#16875b",
+        warning: "#b26a00",
+        danger: "#c2414b",
       },
       boxShadow: {
-        soft: "0 14px 40px rgba(15, 23, 42, 0.08)",
+        soft: "0 12px 30px rgba(24, 33, 47, 0.08)",
+        focus: "0 0 0 4px rgba(37, 99, 235, 0.16)",
       },
     },
   },
@@ -610,26 +614,44 @@ function frontendGlobals() {
 
 :root {
   color-scheme: light;
-  background: #f7f7f2;
-  color: #111827;
+  background: #f5f7fb;
+  color: #18212f;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+  background: #f5f7fb;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(15, 118, 110, 0.08), transparent 260px),
-    #f7f7f2;
-  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: #dbeafe;
+  color: #18212f;
 }
 `;
 }
@@ -668,11 +690,19 @@ function zhDictionary() {
     "Workspace": "工作区",
     "Local demo": "本地演示",
     "AI usage": "AI 用量",
+    "Live": "实时",
+    "Attention": "需关注",
+    "On track": "运行良好",
+    "Weekly": "本周",
+    "Latest": "最新",
     "Mock provider calls this week": "本周模拟供应商调用",
     "Operating rhythm": "运营节奏",
     "Acquisition": "获客",
     "Activation": "激活",
     "Retention": "留存",
+    "Lead quality and first contact momentum.": "线索质量与首次触达节奏。",
+    "Onboarding tasks moving through launch.": "上线前的入门任务推进。",
+    "Renewal signals and account health.": "续约信号与账户健康度。",
     "Mock workflow lane for product teams.": "面向产品团队的模拟工作流泳道。",
     "Activity": "动态",
     "Workspace settings": "工作区设置",
@@ -953,6 +983,7 @@ function frontendAppShell(context) {
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Activity,
   Bot,
@@ -969,42 +1000,98 @@ import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
 const navigation = ${navigationItems(context)};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  const linkClass = (href: string) => {
+    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return (
+      "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition " +
+      (active
+        ? "bg-accent text-white shadow-sm"
+        : "text-slate-700 hover:bg-surfaceStrong hover:text-ink")
+    );
+  };
+
+  const mobileLinkClass = (href: string) => {
+    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return (
+      "inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition " +
+      (active
+        ? "border-accent bg-accent text-white"
+        : "border-border bg-white text-slate-700 hover:border-accent hover:text-accent")
+    );
+  };
+
   return (
     <LanguageProvider>
-      <div className="min-h-screen">
-        <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-white/90 px-4 py-5 backdrop-blur lg:block">
-          <div className="mb-8">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">ProductFlow</p>
-            <h1 className="mt-1 text-xl font-semibold text-ink">${context.displayName}</h1>
-          </div>
-          <nav className="space-y-1">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-surface hover:text-ink"
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  <I18nText value={item.label} />
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-        <main className="lg:pl-64">
-          <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-            <header className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-4">
-              <div>
-                <p className="text-sm font-medium text-muted">${context.template.name}</p>
-                <h2 className="text-2xl font-semibold text-ink">${i18nNode("Workspace", "工作区")}</h2>
+      <div className="min-h-screen bg-surface">
+        <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-panel/95 px-4 py-5 shadow-sm backdrop-blur lg:block">
+          <div className="flex h-full flex-col">
+            <div className="mb-7 rounded-md border border-border bg-surface px-3 py-3">
+              <p className="text-xs font-semibold uppercase text-accent">ProductFlow</p>
+              <h1 className="mt-1 truncate text-lg font-semibold text-ink">${context.displayName}</h1>
+              <p className="mt-1 truncate text-xs text-muted">${context.template.name}</p>
+            </div>
+            <nav className="grid gap-1">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={linkClass(item.href)}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span className="truncate"><I18nText value={item.label} /></span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="mt-auto rounded-md border border-border bg-surface px-3 py-3 text-sm text-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+                <span className="font-medium">${i18nNode("Local demo", "本地演示")}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <LanguageToggle />
-                <div className="rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-                  ${i18nNode("Local demo", "本地演示")}
+              <p className="mt-1 text-xs text-muted">${context.template.id}</p>
+            </div>
+          </div>
+        </aside>
+
+        <main className="lg:pl-72">
+          <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+            <header className="sticky top-0 z-20 -mx-4 mb-5 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mb-6 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-muted">${context.template.name}</p>
+                    <h2 className="truncate text-2xl font-semibold text-ink">${i18nNode("Workspace", "工作区")}</h2>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <LanguageToggle />
+                    <div className="hidden rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm sm:block">
+                      ${i18nNode("Local demo", "本地演示")}
+                    </div>
+                  </div>
                 </div>
+                <nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Primary">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={mobileLinkClass(item.href)}
+                      >
+                        <Icon size={16} aria-hidden="true" />
+                        <span><I18nText value={item.label} /></span>
+                      </Link>
+                    );
+                  })}
+                </nav>
               </div>
             </header>
             {children}
@@ -1038,14 +1125,16 @@ function navigationItems(context) {
 }
 
 function frontendDashboardPage(context) {
+  const metricGrid = has(context, "ai") ? "xl:grid-cols-5" : "xl:grid-cols-4";
   const aiCard = has(context, "ai")
     ? text`
-        <Card>
-          <CardHeader>
-            <CardTitle>${i18nNode("AI usage", "AI 用量")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-ink">1.8k</p>
+        <Card className="overflow-hidden border-blue-200">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium text-muted">${i18nNode("AI usage", "AI 用量")}</p>
+              <Badge tone="info">${i18nNode("Live", "实时")}</Badge>
+            </div>
+            <p className="mt-4 text-3xl font-semibold text-ink">1.8k</p>
             <p className="mt-2 text-sm text-muted">${i18nNode("Mock provider calls this week", "本周模拟供应商调用")}</p>
           </CardContent>
         </Card>`
@@ -1061,29 +1150,38 @@ import { activities, metrics } from "@/lib/mock-data";
 const stages = [
   {
     label: ${i18nValue("Acquisition", "获客")},
-    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+    description: ${i18nValue("Lead quality and first contact momentum.", "线索质量与首次触达节奏。")},
+    progress: "78%",
+    tone: "bg-accent",
   },
   {
     label: ${i18nValue("Activation", "激活")},
-    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+    description: ${i18nValue("Onboarding tasks moving through launch.", "上线前的入门任务推进。")},
+    progress: "64%",
+    tone: "bg-success",
   },
   {
     label: ${i18nValue("Retention", "留存")},
-    description: ${i18nValue("Mock workflow lane for product teams.", "面向产品团队的模拟工作流泳道。")},
+    description: ${i18nValue("Renewal signals and account health.", "续约信号与账户健康度。")},
+    progress: "71%",
+    tone: "bg-warning",
   },
 ];
 
 export default function DashboardPage() {
   return (
     <AppShell>
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <Card key={metric.label}>
-            <CardHeader>
-              <CardTitle><I18nText value={metric.label} /></CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold text-ink">{metric.value}</p>
+      <section className="grid gap-4 md:grid-cols-2 ${metricGrid}">
+        {metrics.map((metric, index) => (
+          <Card key={metric.label} className="overflow-hidden">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-medium text-muted"><I18nText value={metric.label} /></p>
+                <Badge tone={index === metrics.length - 1 ? "warning" : "success"}>
+                  <I18nText value={index === metrics.length - 1 ? ${i18nValue("Attention", "需关注")} : ${i18nValue("On track", "运行良好")}} />
+                </Badge>
+              </div>
+              <p className="mt-4 text-3xl font-semibold text-ink">{metric.value}</p>
               <p className="mt-2 text-sm text-muted"><I18nText value={metric.change} /></p>
             </CardContent>
           </Card>
@@ -1091,17 +1189,26 @@ export default function DashboardPage() {
 ${aiCard}
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+      <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
         <Card>
           <CardHeader>
-            <CardTitle>${i18nNode("Operating rhythm", "运营节奏")}</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>${i18nNode("Operating rhythm", "运营节奏")}</CardTitle>
+              <Badge tone="info">${i18nNode("Weekly", "本周")}</Badge>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
             <div className="grid gap-3 md:grid-cols-3">
               {stages.map((stage) => (
                 <div key={stage.label.en} className="rounded-md border border-border bg-surface p-4">
-                  <p className="text-sm font-semibold text-ink"><I18nText value={stage.label} /></p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-ink"><I18nText value={stage.label} /></p>
+                    <span className="text-sm font-semibold text-ink">{stage.progress}</span>
+                  </div>
                   <p className="mt-2 text-sm text-muted"><I18nText value={stage.description} /></p>
+                  <div className="mt-4 h-2 rounded-full bg-surfaceStrong">
+                    <div className={"h-2 rounded-full " + stage.tone} style={{ width: stage.progress }} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1110,17 +1217,21 @@ ${aiCard}
 
         <Card>
           <CardHeader>
-            <CardTitle>${i18nNode("Activity", "动态")}</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>${i18nNode("Activity", "动态")}</CardTitle>
+              <Badge>${i18nNode("Latest", "最新")}</Badge>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-5">
+            <div className="space-y-4">
               {activities.map((activity) => (
-                <div key={activity.id} className="flex items-start justify-between gap-3">
-                  <div>
+                <div key={activity.id} className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-ink"><I18nText value={activity.title} /></p>
                     <p className="text-sm text-muted">{activity.actor}</p>
                   </div>
-                  <Badge><I18nText value={activity.kind} /></Badge>
+                  <Badge className="shrink-0"><I18nText value={activity.kind} /></Badge>
                 </div>
               ))}
             </div>
@@ -1137,6 +1248,7 @@ function frontendPrototypePage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prototypeSteps } from "@/lib/mock-data";
 
@@ -1145,13 +1257,16 @@ export default function PrototypePage() {
     <AppShell>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {prototypeSteps.map((step) => (
-          <Card key={step.title}>
+          <Card key={step.title} className="overflow-hidden">
             <CardHeader>
-              <CardTitle><I18nText value={step.title} /></CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle><I18nText value={step.title} /></CardTitle>
+                <Badge tone="info">{step.progress}</Badge>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <p className="text-sm text-muted"><I18nText value={step.description} /></p>
-              <div className="mt-4 h-2 rounded-full bg-surface">
+              <div className="mt-5 h-2 rounded-full bg-surfaceStrong">
                 <div className="h-2 rounded-full bg-accent" style={{ width: step.progress }} />
               </div>
             </CardContent>
@@ -1168,6 +1283,7 @@ function frontendSettingsPage(context) {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1177,15 +1293,21 @@ export default function SettingsPage() {
     <AppShell>
       <Card>
         <CardHeader>
-          <CardTitle>${i18nNode("Workspace settings", "工作区设置")}</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>${i18nNode("Workspace settings", "工作区设置")}</CardTitle>
+            <span className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs font-medium text-muted">${context.template.id}</span>
+          </div>
         </CardHeader>
-        <CardContent>
-          <form className="grid max-w-2xl gap-4">
+        <CardContent className="p-5">
+          <form className="grid gap-5 lg:grid-cols-2">
             <Input label=${i18nProp("Workspace name", "工作区名称")} defaultValue="${context.displayName}" />
             <Input label=${i18nProp("API base URL", "API 基础地址")} defaultValue="http://localhost:${context.backendPort}" />
-            <Input label=${i18nProp("Enabled modules", "已启用模块")} defaultValue="${context.modules.join(", ")}" />
-            <div>
-              <Button type="button"><I18nText value=${i18nProp("Save settings", "保存设置")} /></Button>
+            <Input containerClassName="lg:col-span-2" label=${i18nProp("Enabled modules", "已启用模块")} defaultValue="${context.modules.join(", ")}" />
+            <div className="flex justify-end border-t border-border pt-5 lg:col-span-2">
+              <Button type="button">
+                <Save size={16} aria-hidden="true" />
+                <I18nText value=${i18nProp("Save settings", "保存设置")} />
+              </Button>
             </div>
           </form>
         </CardContent>
@@ -1200,6 +1322,7 @@ function frontendUsersPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1211,14 +1334,20 @@ export default function UsersPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>${i18nNode("Users", "用户")}</CardTitle>
-            <Button type="button">${i18nNode("Invite", "邀请")}</Button>
+            <div>
+              <CardTitle>${i18nNode("Users", "用户")}</CardTitle>
+              <p className="mt-1 text-sm text-muted">{users.length} <I18nText value="members" /></p>
+            </div>
+            <Button type="button">
+              <UserPlus size={16} aria-hidden="true" />
+              ${i18nNode("Invite", "邀请")}
+            </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-md border border-border">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-surface text-slate-600">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-[680px] w-full border-collapse text-left text-sm">
+              <thead className="border-b border-border bg-surfaceStrong text-slate-600">
                 <tr>
                   <th className="px-4 py-3 font-medium">${i18nNode("Name", "姓名")}</th>
                   <th className="px-4 py-3 font-medium">${i18nNode("Email", "邮箱")}</th>
@@ -1228,11 +1357,15 @@ export default function UsersPage() {
               </thead>
               <tbody className="divide-y divide-border bg-white">
                 {users.map((user) => (
-                  <tr key={user.email}>
+                  <tr key={user.email} className="transition hover:bg-surface">
                     <td className="px-4 py-3 font-medium text-ink">{user.name}</td>
                     <td className="px-4 py-3 text-muted">{user.email}</td>
                     <td className="px-4 py-3 text-muted"><I18nText value={user.role} /></td>
-                    <td className="px-4 py-3"><Badge><I18nText value={user.status} /></Badge></td>
+                    <td className="px-4 py-3">
+                      <Badge tone={user.status === "active" ? "success" : "warning"}>
+                        <I18nText value={user.status} />
+                      </Badge>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1250,6 +1383,7 @@ function frontendRolesPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { roles } from "@/lib/mock-data";
 
@@ -1260,9 +1394,12 @@ export default function RolesPage() {
         {roles.map((role) => (
           <Card key={role.name}>
             <CardHeader>
-              <CardTitle><I18nText value={role.name} /></CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle><I18nText value={role.name} /></CardTitle>
+                <Badge tone={role.name === "Owner" ? "info" : "neutral"}>{role.members}</Badge>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <p className="text-sm text-muted"><I18nText value={role.description} /></p>
               <p className="mt-4 text-sm font-medium text-ink">{role.members} <I18nText value="members" /></p>
             </CardContent>
@@ -1279,6 +1416,7 @@ function frontendAiPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1292,18 +1430,21 @@ export default function AiPage() {
           <CardHeader>
             <CardTitle>${i18nNode("AI chat", "AI 对话")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="rounded-md bg-surface p-4 text-sm text-slate-700">
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="rounded-md bg-surfaceStrong p-4 text-sm text-slate-700">
                 ${i18nNode("Ask the mock provider to summarize product feedback.", "让模拟供应商总结产品反馈。")}
               </div>
               <div className="rounded-md border border-border bg-white p-4 text-sm text-slate-700">
                 ${i18nNode("The provider abstraction is ready. Set AI_PROVIDER and API keys in .env.", "供应商抽象已准备好。可在 .env 中设置 AI_PROVIDER 和 API 密钥。")}
               </div>
-              <div className="flex gap-3">
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                 <Input label=${i18nProp("Message", "消息")} placeholder="Summarize this week's usage" />
-                <div className="pt-6">
-                  <Button type="button">${i18nNode("Send", "发送")}</Button>
+                <div>
+                  <Button type="button" className="w-full sm:w-auto">
+                    <Send size={16} aria-hidden="true" />
+                    ${i18nNode("Send", "发送")}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1314,10 +1455,10 @@ export default function AiPage() {
           <CardHeader>
             <CardTitle>${i18nNode("Prompt library", "提示词库")}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
             <div className="space-y-3">
               {prompts.map((prompt) => (
-                <div key={prompt.name} className="rounded-md border border-border p-3">
+                <div key={prompt.name} className="rounded-md border border-border bg-surface p-3 transition hover:border-accent">
                   <p className="text-sm font-medium text-ink"><I18nText value={prompt.name} /></p>
                   <p className="mt-1 text-sm text-muted"><I18nText value={prompt.description} /></p>
                 </div>
@@ -1345,17 +1486,20 @@ export default function AuditPage() {
     <AppShell>
       <Card>
         <CardHeader>
-          <CardTitle>${i18nNode("Audit logs", "审计日志")}</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>${i18nNode("Audit logs", "审计日志")}</CardTitle>
+            <Badge>{auditLogs.length}</Badge>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           <div className="space-y-3">
             {auditLogs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between rounded-md border border-border p-3">
-                <div>
+              <div key={log.id} className="flex items-center justify-between gap-4 rounded-md border border-border bg-white p-3 transition hover:bg-surface">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-ink"><I18nText value={log.action} /></p>
                   <p className="text-sm text-muted">{log.actor} / <I18nText value={log.time} /></p>
                 </div>
-                <Badge><I18nText value={log.scope} /></Badge>
+                <Badge className="shrink-0"><I18nText value={log.scope} /></Badge>
               </div>
             ))}
           </div>
@@ -1371,6 +1515,7 @@ function frontendFilesPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -1381,11 +1526,14 @@ export default function FilesPage() {
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
             <CardTitle>${i18nNode("Files", "文件")}</CardTitle>
-            <Button type="button">${i18nNode("Upload", "上传")}</Button>
+            <Button type="button">
+              <Upload size={16} aria-hidden="true" />
+              ${i18nNode("Upload", "上传")}
+            </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
+        <CardContent className="p-5">
+          <div className="rounded-md border border-dashed border-border bg-surface px-5 py-10 text-center text-sm text-muted">
             ${i18nNode("File storage module placeholder. Wire this to S3, R2, OSS, or local storage.", "文件存储模块占位。可接入 S3、R2、OSS 或本地存储。")}
           </div>
         </CardContent>
@@ -1400,6 +1548,7 @@ function frontendEmailPage() {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1411,13 +1560,16 @@ export default function EmailPage() {
         <CardHeader>
           <CardTitle>${i18nNode("Email preview", "邮件预览")}</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form className="grid max-w-2xl gap-4">
+        <CardContent className="p-5">
+          <form className="grid gap-5 lg:grid-cols-2">
             <Input label=${i18nProp("Recipient", "收件人")} placeholder="founder@example.com" />
             <Input label=${i18nProp("Subject", "主题")} placeholder="Welcome to ProductFlow" />
-            <Input label=${i18nProp("Template key", "模板键")} placeholder="welcome" />
-            <div>
-              <Button type="button">${i18nNode("Render preview", "生成预览")}</Button>
+            <Input containerClassName="lg:col-span-2" label=${i18nProp("Template key", "模板键")} placeholder="welcome" />
+            <div className="flex justify-end border-t border-border pt-5 lg:col-span-2">
+              <Button type="button">
+                <Eye size={16} aria-hidden="true" />
+                ${i18nNode("Render preview", "生成预览")}
+              </Button>
             </div>
           </form>
         </CardContent>
@@ -1430,9 +1582,28 @@ export default function EmailPage() {
 
 function frontendBadge() {
   return text`
-export function Badge({ children }: { children: React.ReactNode }) {
+import type { HTMLAttributes } from "react";
+
+type BadgeTone = "neutral" | "success" | "warning" | "info" | "danger";
+
+type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
+  tone?: BadgeTone;
+};
+
+const toneClasses: Record<BadgeTone, string> = {
+  neutral: "border-border bg-surfaceStrong text-slate-700",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  warning: "border-amber-200 bg-amber-50 text-amber-800",
+  info: "border-blue-200 bg-blue-50 text-blue-700",
+  danger: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+export function Badge({ children, className = "", tone = "neutral", ...props }: BadgeProps) {
   return (
-    <span className="inline-flex h-6 items-center rounded-md border border-border bg-surface px-2 text-xs font-medium text-slate-700">
+    <span
+      className={"inline-flex min-h-6 items-center rounded-md border px-2 py-0.5 text-xs font-medium " + toneClasses[tone] + " " + className}
+      {...props}
+    >
       {children}
     </span>
   );
@@ -1444,11 +1615,25 @@ function frontendButton() {
   return text`
 import type { ButtonHTMLAttributes } from "react";
 
-export function Button({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+type ButtonVariant = "primary" | "secondary" | "ghost";
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+};
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: "bg-accent text-white shadow-sm hover:bg-blue-700",
+  secondary: "border border-border bg-white text-ink shadow-sm hover:border-accent hover:text-accent",
+  ghost: "bg-transparent text-slate-700 hover:bg-surfaceStrong hover:text-ink",
+};
+
+export function Button({ className = "", variant = "primary", ...props }: ButtonProps) {
   return (
     <button
       className={
-        "inline-flex h-10 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60 " +
+        "inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-60 " +
+        variantClasses[variant] +
+        " " +
         className
       }
       {...props}
@@ -1460,20 +1645,41 @@ export function Button({ className = "", ...props }: ButtonHTMLAttributes<HTMLBu
 
 function frontendCard() {
   return text`
-export function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-md border border-border bg-panel shadow-soft">{children}</div>;
+import type { HTMLAttributes } from "react";
+
+type DivProps = HTMLAttributes<HTMLDivElement>;
+type HeadingProps = HTMLAttributes<HTMLHeadingElement>;
+
+export function Card({ children, className = "", ...props }: DivProps) {
+  return (
+    <div className={"rounded-md border border-border bg-panel shadow-soft " + className} {...props}>
+      {children}
+    </div>
+  );
 }
 
-export function CardHeader({ children }: { children: React.ReactNode }) {
-  return <div className="border-b border-border px-5 py-4">{children}</div>;
+export function CardHeader({ children, className = "", ...props }: DivProps) {
+  return (
+    <div className={"border-b border-border px-5 py-4 " + className} {...props}>
+      {children}
+    </div>
+  );
 }
 
-export function CardTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-base font-semibold text-ink">{children}</h3>;
+export function CardTitle({ children, className = "", ...props }: HeadingProps) {
+  return (
+    <h3 className={"text-base font-semibold text-ink " + className} {...props}>
+      {children}
+    </h3>
+  );
 }
 
-export function CardContent({ children }: { children: React.ReactNode }) {
-  return <div className="px-5 py-4">{children}</div>;
+export function CardContent({ children, className = "px-5 py-4", ...props }: DivProps) {
+  return (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  );
 }
 `;
 }
@@ -1485,15 +1691,16 @@ import { I18nText, type LocalizedText } from "@/components/i18n";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label: LocalizedText;
+  containerClassName?: string;
 };
 
-export function Input({ label, className = "", ...props }: InputProps) {
+export function Input({ label, className = "", containerClassName = "", ...props }: InputProps) {
   return (
-    <label className="grid gap-2 text-sm font-medium text-slate-700">
+    <label className={"grid gap-2 text-sm font-medium text-slate-700 " + containerClassName}>
       <I18nText value={label} />
       <input
         className={
-          "h-10 rounded-md border border-border bg-white px-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-teal-100 " +
+          "h-10 rounded-md border border-border bg-white px-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent focus:shadow-focus " +
           className
         }
         {...props}
@@ -1639,9 +1846,12 @@ setLanguage(language.value);
 function vueStyle() {
   return text`
 :root {
-  color: #111827;
-  background: #f7f7f2;
-  font-family: Arial, Helvetica, sans-serif;
+  color: #18212f;
+  background: #f5f7fb;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -1650,23 +1860,30 @@ function vueStyle() {
 
 body {
   margin: 0;
+  background: #f5f7fb;
 }
 
 .shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 288px 1fr;
 }
 
 .sidebar {
-  border-right: 1px solid #d6d9e0;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 24px 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border-right: 1px solid #d8dee9;
+  box-shadow: 0 1px 0 rgba(24, 33, 47, 0.04);
+  padding: 20px 16px;
 }
 
 .sidebar h1 {
-  margin: 4px 0 28px;
-  font-size: 22px;
+  background: #f5f7fb;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1.2;
+  margin: 8px 0 24px;
+  padding: 12px;
 }
 
 .sidebar nav {
@@ -1675,32 +1892,39 @@ body {
 }
 
 .sidebar a {
-  color: #475569;
+  color: #49566a;
   border-radius: 6px;
-  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 12px;
   text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .sidebar a:hover {
-  background: #f7f7f2;
-  color: #111827;
+  background: #eef2f8;
+  color: #18212f;
 }
 
 .content {
+  min-width: 0;
   padding: 24px;
 }
 
 .topbar {
   align-items: center;
-  border-bottom: 1px solid #d6d9e0;
+  border-bottom: 1px solid #d8dee9;
   display: flex;
+  gap: 16px;
   justify-content: space-between;
   margin-bottom: 24px;
-  padding-bottom: 18px;
+  padding-bottom: 16px;
 }
 
 .topbar h2 {
   margin: 0;
+  font-size: 28px;
+  letter-spacing: 0;
 }
 
 .topbar-actions {
@@ -1711,7 +1935,7 @@ body {
 
 .language-toggle {
   background: #ffffff;
-  border: 1px solid #d6d9e0;
+  border: 1px solid #d8dee9;
   border-radius: 6px;
   display: inline-flex;
   gap: 4px;
@@ -1720,29 +1944,33 @@ body {
 
 .language-toggle button {
   background: transparent;
-  color: #475569;
+  color: #49566a;
   height: 32px;
   padding: 0 12px;
 }
 
 .language-toggle button.active {
-  background: #0f766e;
+  background: #2563eb;
   color: #ffffff;
 }
 
 .eyebrow {
-  color: #0f766e;
+  color: #2563eb;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   margin: 0;
   text-transform: uppercase;
 }
 
 .badge {
-  border: 1px solid #d6d9e0;
+  border: 1px solid #d8dee9;
   border-radius: 6px;
   background: #ffffff;
+  box-shadow: 0 1px 2px rgba(24, 33, 47, 0.06);
+  color: #49566a;
+  font-size: 14px;
+  font-weight: 600;
   padding: 8px 12px;
 }
 
@@ -1756,25 +1984,26 @@ body {
 .card,
 .panel {
   background: #ffffff;
-  border: 1px solid #d6d9e0;
+  border: 1px solid #d8dee9;
   border-radius: 8px;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 30px rgba(24, 33, 47, 0.08);
 }
 
 .card {
-  padding: 18px;
+  padding: 20px;
 }
 
 .card strong {
   display: block;
-  font-size: 30px;
-  margin: 8px 0;
+  font-size: 32px;
+  line-height: 1;
+  margin: 12px 0 8px;
 }
 
 .label,
 .card span,
 .panel p {
-  color: #64748b;
+  color: #687386;
 }
 
 .panel {
@@ -1783,10 +2012,11 @@ body {
 
 .panel-header {
   align-items: center;
-  border-bottom: 1px solid #d6d9e0;
+  border-bottom: 1px solid #d8dee9;
   display: flex;
+  gap: 16px;
   justify-content: space-between;
-  padding: 18px;
+  padding: 18px 20px;
 }
 
 .panel-header h3 {
@@ -1794,13 +2024,23 @@ body {
 }
 
 button {
-  background: #0f766e;
+  background: #2563eb;
   border: 0;
   border-radius: 6px;
   color: #ffffff;
   font-weight: 700;
   height: 40px;
   padding: 0 16px;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+button:focus-visible {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+  outline: none;
 }
 
 .table-wrap {
@@ -1814,14 +2054,14 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid #d6d9e0;
+  border-bottom: 1px solid #d8dee9;
   padding: 12px 16px;
   text-align: left;
 }
 
 th {
-  background: #f7f7f2;
-  color: #475569;
+  background: #eef2f8;
+  color: #49566a;
   font-weight: 700;
 }
 
@@ -1832,10 +2072,50 @@ th {
 
   .sidebar {
     position: static;
+    border-right: 0;
+    border-bottom: 1px solid #d8dee9;
+  }
+
+  .sidebar h1 {
+    margin-bottom: 16px;
+  }
+
+  .sidebar nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .sidebar a {
+    background: #ffffff;
+    border: 1px solid #d8dee9;
+    white-space: nowrap;
+  }
+
+  .topbar,
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: 16px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 `;
@@ -1913,6 +2193,8 @@ function frontendBlueprintPage(resource) {
   return text`
 import { AppShell } from "@/components/app-shell";
 import { I18nText } from "@/components/i18n";
+import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -1925,17 +2207,23 @@ export default function ${resource.className}Page() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <CardTitle>${i18nNode(resource.title, zhText(resource.title))}</CardTitle>
               <p className="mt-1 text-sm text-muted">${i18nNode(resource.description, zhText(resource.description))}</p>
             </div>
-            <Button type="button">${i18nNode(resource.actionLabel ?? "Create", zhText(resource.actionLabel ?? "Create"))}</Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge>{rows.length}</Badge>
+              <Button type="button">
+                <Plus size={16} aria-hidden="true" />
+                ${i18nNode(resource.actionLabel ?? "Create", zhText(resource.actionLabel ?? "Create"))}
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-md border border-border">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-surface text-slate-600">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-[720px] w-full border-collapse text-left text-sm">
+              <thead className="border-b border-border bg-surfaceStrong text-slate-600">
                 <tr>
                   {columns.map((column) => (
                     <th key={column.key} className="px-4 py-3 font-medium"><I18nText value={column.label} /></th>
@@ -1944,7 +2232,7 @@ export default function ${resource.className}Page() {
               </thead>
               <tbody className="divide-y divide-border bg-white">
                 {rows.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} className="transition hover:bg-surface">
                     {columns.map((column) => (
                       <td key={column.key} className="px-4 py-3 text-slate-700">{row[column.key]}</td>
                     ))}

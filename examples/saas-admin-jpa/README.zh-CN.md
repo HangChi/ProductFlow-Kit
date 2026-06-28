@@ -21,6 +21,11 @@ docker compose up --build
 
 后端：http://localhost:8080
 
+## 语言
+
+- 当前语言模式：`bilingual`。
+- 可使用 `--language zh`、`--language en` 或 `--language bilingual`。选择 `bilingual` 时，前端会生成页面内语言切换。
+
 ## 常用命令
 
 ```bash

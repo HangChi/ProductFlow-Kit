@@ -9,15 +9,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/audit-logs")
 public class AuditLogController {
-    @GetMapping
-    public ApiResponse<List<AuditLogDto>> listAuditLogs() {
-        return ApiResponse.ok(List.of(
-            new AuditLogDto("log_1", "User invited", "Ada Chen", "auth"),
-            new AuditLogDto("log_2", "Role permissions updated", "Ben Miller", "rbac"),
-            new AuditLogDto("log_3", "AI prompt published", "System", "ai")
-        ));
+    private final AuditLogService auditLogService;
+    private final com.productflow.app.roles.PermissionGuard permissionGuard;
+
+
+    public AuditLogController(AuditLogService auditLogService, com.productflow.app.roles.PermissionGuard permissionGuard) {
+        this.auditLogService = auditLogService;
+        this.permissionGuard = permissionGuard;
+
     }
 
-    public record AuditLogDto(String id, String action, String actor, String scope) {
+    @GetMapping
+    public ApiResponse<List<AuditLogService.AuditLogDto>> listAuditLogs() {
+        permissionGuard.require("audit:read");
+        return ApiResponse.ok(auditLogService.listLogs());
     }
 }

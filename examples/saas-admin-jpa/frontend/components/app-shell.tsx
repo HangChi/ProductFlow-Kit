@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Activity,
   Bot,
@@ -10,6 +13,7 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
 
 const navigation = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -21,43 +25,104 @@ const navigation = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  const linkClass = (href: string) => {
+    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return (
+      "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition " +
+      (active
+        ? "bg-accent text-white shadow-sm"
+        : "text-slate-700 hover:bg-surfaceStrong hover:text-ink")
+    );
+  };
+
+  const mobileLinkClass = (href: string) => {
+    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return (
+      "inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition " +
+      (active
+        ? "border-accent bg-accent text-white"
+        : "border-border bg-white text-slate-700 hover:border-accent hover:text-accent")
+    );
+  };
+
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-white/90 px-4 py-5 backdrop-blur lg:block">
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">ProductFlow</p>
-          <h1 className="mt-1 text-xl font-semibold text-ink">Saas Admin Jpa</h1>
-        </div>
-        <nav className="space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-surface hover:text-ink"
-              >
-                <Icon size={18} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-      <main className="lg:pl-64">
-        <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-          <header className="mb-6 flex items-center justify-between border-b border-border pb-4">
-            <div>
-              <p className="text-sm font-medium text-muted">SaaS Admin</p>
-              <h2 className="text-2xl font-semibold text-ink">Workspace</h2>
+    <LanguageProvider>
+      <div className="min-h-screen bg-surface">
+        <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-panel/95 px-4 py-5 shadow-sm backdrop-blur lg:block">
+          <div className="flex h-full flex-col">
+            <div className="mb-7 rounded-md border border-border bg-surface px-3 py-3">
+              <p className="text-xs font-semibold uppercase text-accent">ProductFlow</p>
+              <h1 className="mt-1 truncate text-lg font-semibold text-ink">Saas Admin Jpa</h1>
+              <p className="mt-1 truncate text-xs text-muted">SaaS Admin</p>
             </div>
-            <div className="rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-              Local demo
+            <nav className="grid gap-1">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={linkClass(item.href)}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span className="truncate"><I18nText value={item.label} /></span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="mt-auto rounded-md border border-border bg-surface px-3 py-3 text-sm text-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+                <span className="font-medium"><I18nText value={{ en: "Local demo", zh: "本地演示" }} /></span>
+              </div>
+              <p className="mt-1 text-xs text-muted">saas-admin</p>
             </div>
-          </header>
-          {children}
-        </div>
-      </main>
-    </div>
+          </div>
+        </aside>
+
+        <main className="lg:pl-72">
+          <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+            <header className="sticky top-0 z-20 -mx-4 mb-5 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:mb-6 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-muted">SaaS Admin</p>
+                    <h2 className="truncate text-2xl font-semibold text-ink"><I18nText value={{ en: "Workspace", zh: "工作区" }} /></h2>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <LanguageToggle />
+                    <div className="hidden rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm sm:block">
+                      <I18nText value={{ en: "Local demo", zh: "本地演示" }} />
+                    </div>
+                  </div>
+                </div>
+                <nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Primary">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={mobileLinkClass(item.href)}
+                      >
+                        <Icon size={16} aria-hidden="true" />
+                        <span><I18nText value={item.label} /></span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+            </header>
+            {children}
+          </div>
+        </main>
+      </div>
+    </LanguageProvider>
   );
 }
