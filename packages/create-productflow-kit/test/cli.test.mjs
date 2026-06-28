@@ -100,6 +100,7 @@ describe("project generation", () => {
     assert.equal(result.dataLayer, "jpa");
     assert.deepEqual(result.modules, ["auth", "rbac", "audit-log"]);
     assertFile(targetDir, "frontend/app/page.tsx");
+    assertFile(targetDir, "frontend/app/login/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/auth/AuthService.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/auth/SessionAuthFilter.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/users/UserService.java");
@@ -123,6 +124,14 @@ describe("project generation", () => {
     assert.match(migration, /CREATE TABLE IF NOT EXISTS permissions/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS role_permissions/);
     assert.match(migration, /CREATE TABLE IF NOT EXISTS audit_logs/);
+
+    const appShell = readFile(targetDir, "frontend/components/app-shell.tsx");
+    assert.match(appShell, /Logout/);
+    assert.match(appShell, /\/api\/auth\/me/);
+
+    const api = readFile(targetDir, "frontend/lib/api.ts");
+    assert.match(api, /Authorization/);
+    assert.match(api, /Bearer/);
   });
 
   test("supports dry-run without writing files", async () => {
@@ -281,7 +290,12 @@ describe("project generation", () => {
     assert.equal(result.template.id, "landing-page");
     assert.deepEqual(result.modules, ["email"]);
     assertFile(targetDir, "frontend/app/leads/page.tsx");
+    assertNoFile(targetDir, "frontend/app/login/page.tsx");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/leads/LeadController.java");
+
+    const appShell = readFile(targetDir, "frontend/components/app-shell.tsx");
+    assert.doesNotMatch(appShell, /\/login/);
+    assert.doesNotMatch(appShell, /Logout/);
 
     const migration = readFile(targetDir, "backend/src/main/resources/db/migration/V1__init.sql");
     assert.match(migration, /CREATE TABLE IF NOT EXISTS landing_leads/);
@@ -389,6 +403,8 @@ describe("project generation", () => {
     assert.equal(result.template.id, "spring-api");
     assert.deepEqual(result.modules, ["auth"]);
     assertNoFile(targetDir, "frontend/package.json");
+    assertNoFile(targetDir, "frontend/app/login/page.tsx");
+    assertFile(targetDir, "backend/src/main/java/com/productflow/app/auth/AuthController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/platform/ApiKeyController.java");
     assertFile(targetDir, "backend/src/main/java/com/productflow/app/platform/WebhookSubscriptionController.java");
 

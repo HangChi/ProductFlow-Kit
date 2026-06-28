@@ -143,6 +143,7 @@ function nextFrontendFiles(context) {
     file("frontend/app/globals.css", frontendGlobals()),
     file("frontend/app/layout.tsx", frontendLayout(context)),
     file("frontend/app/page.tsx", frontendDashboardPage(context)),
+    ...(has(context, "auth") ? [file("frontend/app/login/page.tsx", frontendLoginPage(context))] : []),
     file("frontend/app/prototype/page.tsx", frontendPrototypePage()),
     file("frontend/app/settings/page.tsx", frontendSettingsPage(context)),
     file("frontend/app/users/page.tsx", frontendUsersPage(context)),
@@ -979,28 +980,170 @@ export function LanguageToggle() {
 }
 
 function frontendAppShell(context) {
+  const authEnabled = has(context, "auth");
+  const reactImport = authEnabled ? 'import { useEffect, useState } from "react";\n' : "";
+  const navigationImport = `import { usePathname${authEnabled ? ", useRouter" : ""} } from "next/navigation";`;
+  const authIconImports = authEnabled
+    ? text`
+  LogIn,
+  LogOut,
+  UserCircle,`
+    : "";
+  const apiImport = authEnabled
+    ? 'import { apiGet, apiPost, clearAuthSession, getAuthToken, getStoredUser, saveAuthSession, type ApiEnvelope, type AuthUser } from "@/lib/api";\n'
+    : "";
+  const authState = authEnabled
+    ? text`
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    const storedUser = getStoredUser();
+
+    if (storedUser) {
+      setUser(storedUser);
+    }
+
+    if (!token) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    apiGet<ApiEnvelope<AuthUser>>("/api/auth/me", { token })
+      .then((payload) => {
+        saveAuthSession({ token, user: payload.data });
+        setUser(payload.data);
+      })
+      .catch(() => {
+        clearAuthSession();
+        setUser(null);
+      })
+      .finally(() => setCheckingAuth(false));
+  }, []);
+
+  const handleLogout = async () => {
+    const token = getAuthToken();
+
+    try {
+      if (token) {
+        await apiPost<ApiEnvelope<null>>("/api/auth/logout", undefined, { token });
+      }
+    } finally {
+      clearAuthSession();
+      setUser(null);
+      router.push("/login");
+      router.refresh();
+    }
+  };
+`
+    : "";
+  const authSidebarStatus = authEnabled
+    ? text`
+            <div className="mt-3 rounded-md border border-border bg-white px-3 py-3 text-sm text-slate-700 shadow-sm">
+              {user ? (
+                <div className="space-y-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <UserCircle size={18} className="shrink-0 text-accent" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{user.name || user.email}</p>
+                      <p className="truncate text-xs text-muted">{user.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:shadow-focus"
+                  >
+                    <LogOut size={16} aria-hidden="true" />
+                    <I18nText value={{ en: "Logout", zh: "\\u9000\\u51fa\\u767b\\u5f55" }} />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+                    <span className="font-medium">
+                      <I18nText
+                        value={
+                          checkingAuth
+                            ? { en: "Checking session", zh: "\\u6b63\\u5728\\u68c0\\u67e5\\u767b\\u5f55" }
+                            : { en: "Not signed in", zh: "\\u672a\\u767b\\u5f55" }
+                        }
+                      />
+                    </span>
+                  </div>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-accent px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:shadow-focus"
+                    aria-busy={checkingAuth}
+                  >
+                    <LogIn size={16} aria-hidden="true" />
+                    <I18nText value={{ en: "Sign in", zh: "\\u767b\\u5f55" }} />
+                  </Link>
+                </div>
+              )}
+            </div>`
+    : "";
+  const authHeaderStatus = authEnabled
+    ? text`
+                    {user ? (
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="inline-flex h-10 max-w-[160px] items-center gap-2 rounded-md border border-border bg-white px-3 text-sm text-slate-700 shadow-sm transition hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:shadow-focus sm:max-w-[220px]"
+                        title="Logout"
+                      >
+                        <UserCircle size={16} className="shrink-0" aria-hidden="true" />
+                        <span className="hidden truncate sm:inline">{user.name || user.email}</span>
+                        <LogOut size={15} className="shrink-0" aria-hidden="true" />
+                      </button>
+                    ) : (
+                      <Link
+                        href="/login"
+                        className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:shadow-focus"
+                        aria-busy={checkingAuth}
+                        aria-label="Sign in"
+                      >
+                        <LogIn size={16} aria-hidden="true" />
+                        <span className="hidden sm:inline">
+                          <I18nText
+                            value={
+                              checkingAuth
+                                ? { en: "Checking", zh: "\\u68c0\\u67e5\\u4e2d" }
+                                : { en: "Sign in", zh: "\\u767b\\u5f55" }
+                            }
+                          />
+                        </span>
+                      </Link>
+                    )}`
+    : "";
   return text`
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+${reactImport}import Link from "next/link";
+${navigationImport}
 import {
   Activity,
   Bot,
   Database,
   FileText,
   Home,
+${authIconImports}
   Mail,
   Settings,
   Shield,
   Users,
 } from "lucide-react";
 import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
+${apiImport}
 
 const navigation = ${navigationItems(context)};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+${authState}
 
   const linkClass = (href: string) => {
     const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -1049,6 +1192,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
+${authSidebarStatus}
             <div className="mt-auto rounded-md border border-border bg-surface px-3 py-3 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
@@ -1070,6 +1214,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <LanguageToggle />
+${authHeaderStatus}
                     <div className="hidden rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm sm:block">
                       ${i18nNode("Local demo", "本地演示")}
                     </div>
@@ -1098,6 +1243,146 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+    </LanguageProvider>
+  );
+}
+`;
+}
+
+function frontendLoginPage(context) {
+  return text`
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { ArrowLeft, LogIn } from "lucide-react";
+import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  apiGet,
+  apiPost,
+  clearAuthSession,
+  getAuthToken,
+  saveAuthSession,
+  type ApiEnvelope,
+  type AuthSession,
+  type AuthUser,
+} from "@/lib/api";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("admin@example.com");
+  const [password, setPassword] = useState("password");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const token = getAuthToken();
+
+    if (!token) {
+      return;
+    }
+
+    apiGet<ApiEnvelope<AuthUser>>("/api/auth/me", { token })
+      .then((payload) => {
+        saveAuthSession({ token, user: payload.data });
+        router.replace("/");
+      })
+      .catch(() => clearAuthSession());
+  }, [router]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const payload = await apiPost<ApiEnvelope<AuthSession>>(
+        "/api/auth/login",
+        { email, password },
+        { skipAuth: true },
+      );
+      saveAuthSession(payload.data);
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError("Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <LanguageProvider>
+      <main className="min-h-screen bg-surface px-4 py-6">
+        <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md flex-col justify-center">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:shadow-focus"
+            >
+              <ArrowLeft size={16} aria-hidden="true" />
+              <I18nText value={{ en: "Workspace", zh: "\\u5de5\\u4f5c\\u533a" }} />
+            </Link>
+            <LanguageToggle />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-accent">ProductFlow</p>
+                  <CardTitle className="mt-1 text-xl">
+                    <I18nText value={{ en: "Sign in to ${context.displayName}", zh: "\\u767b\\u5f55 ${context.displayName}" }} />
+                  </CardTitle>
+                </div>
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accentSoft text-accent">
+                  <LogIn size={20} aria-hidden="true" />
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="px-5 py-5">
+              <form className="grid gap-4" onSubmit={handleSubmit}>
+                <Input
+                  label={{ en: "Email", zh: "\\u90ae\\u7bb1" }}
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  required
+                />
+                <Input
+                  label={{ en: "Password", zh: "\\u5bc6\\u7801" }}
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                {error ? (
+                  <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-danger">
+                    {error}
+                  </p>
+                ) : null}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  <LogIn size={16} aria-hidden="true" />
+                  <I18nText
+                    value={
+                      loading
+                        ? { en: "Signing in...", zh: "\\u6b63\\u5728\\u767b\\u5f55..." }
+                        : { en: "Sign in", zh: "\\u767b\\u5f55" }
+                    }
+                  />
+                </Button>
+              </form>
+              <p className="mt-4 text-center text-xs text-muted">admin@example.com / password</p>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </LanguageProvider>
   );
 }
@@ -2499,16 +2784,114 @@ export default defineConfig({
 function frontendApi(context) {
   return text`
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:${context.backendPort}";
+const TOKEN_STORAGE_KEY = "productflow-auth-token";
+const USER_STORAGE_KEY = "productflow-auth-user";
 
-export async function apiGet<T>(path: string): Promise<T> {
+export type ApiEnvelope<T> = {
+  success: boolean;
+  data: T;
+  message: string | null;
+};
+
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+  roleKey: string;
+  status: string;
+};
+
+export type AuthSession = {
+  token: string;
+  user: AuthUser;
+  expiresAt?: string;
+};
+
+type ApiRequestOptions = Omit<RequestInit, "headers"> & {
+  headers?: HeadersInit;
+  token?: string | null;
+  skipAuth?: boolean;
+};
+
+export function getAuthToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function getStoredUser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(USER_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(stored) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+export function saveAuthSession(session: AuthSession) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
+  window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(session.user));
+}
+
+export function clearAuthSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(USER_STORAGE_KEY);
+}
+
+export async function apiGet<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: options.method ?? "GET" });
+}
+
+export async function apiPost<T>(path: string, body?: unknown, options: ApiRequestOptions = {}): Promise<T> {
+  return apiRequest<T>(path, {
+    ...options,
+    method: "POST",
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const { token, skipAuth = false, headers, ...init } = options;
+  const requestHeaders = new Headers(headers);
+  const bearer = token ?? (skipAuth ? null : getAuthToken());
+
+  if (init.body !== undefined && init.body !== null && !requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (bearer && !requestHeaders.has("Authorization")) {
+    requestHeaders.set("Authorization", \`Bearer \${bearer}\`);
+  }
+
   const response = await fetch(\`\${API_URL}\${path}\`, {
-    headers: {
-      "Content-Type": "application/json",
-    },
+    ...init,
+    headers: requestHeaders,
   });
 
   if (!response.ok) {
     throw new Error(\`Request failed: \${response.status}\`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;

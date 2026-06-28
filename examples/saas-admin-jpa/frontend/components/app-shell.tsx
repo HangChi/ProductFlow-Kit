@@ -1,19 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Bot,
   Database,
   FileText,
   Home,
+  LogIn,
+  LogOut,
+  UserCircle,
+
   Mail,
   Settings,
   Shield,
   Users,
 } from "lucide-react";
 import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
+import { apiGet, apiPost, clearAuthSession, getAuthToken, getStoredUser, saveAuthSession, type ApiEnvelope, type AuthUser } from "@/lib/api";
+
 
 const navigation = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -26,6 +33,50 @@ const navigation = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    const storedUser = getStoredUser();
+
+    if (storedUser) {
+      setUser(storedUser);
+    }
+
+    if (!token) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    apiGet<ApiEnvelope<AuthUser>>("/api/auth/me", { token })
+      .then((payload) => {
+        saveAuthSession({ token, user: payload.data });
+        setUser(payload.data);
+      })
+      .catch(() => {
+        clearAuthSession();
+        setUser(null);
+      })
+      .finally(() => setCheckingAuth(false));
+  }, []);
+
+  const handleLogout = async () => {
+    const token = getAuthToken();
+
+    try {
+      if (token) {
+        await apiPost<ApiEnvelope<null>>("/api/auth/logout", undefined, { token });
+      }
+    } finally {
+      clearAuthSession();
+      setUser(null);
+      router.push("/login");
+      router.refresh();
+    }
+  };
+
 
   const linkClass = (href: string) => {
     const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -74,6 +125,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
+            <div className="mt-3 rounded-md border border-border bg-white px-3 py-3 text-sm text-slate-700 shadow-sm">
+              {user ? (
+                <div className="space-y-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <UserCircle size={18} className="shrink-0 text-accent" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{user.name || user.email}</p>
+                      <p className="truncate text-xs text-muted">{user.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:shadow-focus"
+                  >
+                    <LogOut size={16} aria-hidden="true" />
+                    <I18nText value={{ en: "Logout", zh: "\u9000\u51fa\u767b\u5f55" }} />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+                    <span className="font-medium">
+                      <I18nText
+                        value={
+                          checkingAuth
+                            ? { en: "Checking session", zh: "\u6b63\u5728\u68c0\u67e5\u767b\u5f55" }
+                            : { en: "Not signed in", zh: "\u672a\u767b\u5f55" }
+                        }
+                      />
+                    </span>
+                  </div>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-accent px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:shadow-focus"
+                    aria-busy={checkingAuth}
+                  >
+                    <LogIn size={16} aria-hidden="true" />
+                    <I18nText value={{ en: "Sign in", zh: "\u767b\u5f55" }} />
+                  </Link>
+                </div>
+              )}
+            </div>
+
             <div className="mt-auto rounded-md border border-border bg-surface px-3 py-3 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
@@ -95,6 +191,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <LanguageToggle />
+                    {user ? (
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="inline-flex h-10 max-w-[160px] items-center gap-2 rounded-md border border-border bg-white px-3 text-sm text-slate-700 shadow-sm transition hover:border-danger hover:text-danger focus-visible:outline-none focus-visible:shadow-focus sm:max-w-[220px]"
+                        title="Logout"
+                      >
+                        <UserCircle size={16} className="shrink-0" aria-hidden="true" />
+                        <span className="hidden truncate sm:inline">{user.name || user.email}</span>
+                        <LogOut size={15} className="shrink-0" aria-hidden="true" />
+                      </button>
+                    ) : (
+                      <Link
+                        href="/login"
+                        className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:shadow-focus"
+                        aria-busy={checkingAuth}
+                        aria-label="Sign in"
+                      >
+                        <LogIn size={16} aria-hidden="true" />
+                        <span className="hidden sm:inline">
+                          <I18nText
+                            value={
+                              checkingAuth
+                                ? { en: "Checking", zh: "\u68c0\u67e5\u4e2d" }
+                                : { en: "Sign in", zh: "\u767b\u5f55" }
+                            }
+                          />
+                        </span>
+                      </Link>
+                    )}
+
                     <div className="hidden rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm sm:block">
                       <I18nText value={{ en: "Local demo", zh: "本地演示" }} />
                     </div>
