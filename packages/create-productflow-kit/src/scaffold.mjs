@@ -1761,13 +1761,31 @@ type Resource = {
   fields: ResourceField[];
   samples: ResourceSample[];
 };
+type WorkspaceSettings = {
+  workspaceName: string;
+  apiBaseUrl: string;
+  enabledModules: string;
+};
 
 const languageMode = ${JSON.stringify(context.language)};
 const defaultLanguage = ${JSON.stringify(frontendDefaultLanguage(context))} as Language;
 const zhDictionary: Record<string, string> = ${JSON.stringify(zhDictionary(), null, 2)};
 const metrics: Metric[] = ${JSON.stringify(blueprintMetrics(context), null, 2)};
-const resources: Resource[] = ${JSON.stringify(resources, null, 2)};
+const resources = ref<Resource[]>(${JSON.stringify(resources, null, 2)});
 const language = ref<Language>(defaultLanguage);
+const apiBaseUrl = "http://localhost:${context.backendPort}";
+const sessionKey = "productflow-vue-session";
+const settingsKey = "productflow-vue-settings";
+const loginForm = ref({ email: "admin@example.com", password: "password" });
+const loginError = ref("");
+const loginLoading = ref(false);
+const isSignedIn = ref(window.localStorage.getItem(sessionKey) === "true");
+const currentUser = ref(window.localStorage.getItem("productflow-vue-user") || "Admin User");
+const activeResource = ref<Resource | null>(null);
+const resourceForm = ref<ResourceSample>({});
+const notice = ref("");
+const settingsNotice = ref("");
+const settings = ref<WorkspaceSettings>(loadSettings());
 
 if (languageMode === "bilingual") {
   const stored = window.localStorage.getItem("productflow-language");
@@ -1794,11 +1812,118 @@ function sampleValue(sample: ResourceSample, fieldName: string) {
   return sample[fieldName] ?? "";
 }
 
+async function signIn() {
+  loginError.value = "";
+  loginLoading.value = true;
+
+  try {
+    const response = await fetch(apiBaseUrl + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(loginForm.value),
+    });
+
+    if (response.ok) {
+      const payload = await response.json() as { data?: { token?: string; user?: { name?: string; email?: string } } };
+      finishSignIn(payload.data?.user?.name || payload.data?.user?.email || loginForm.value.email);
+      return;
+    }
+  } catch {
+    // Keep the generated admin usable even before the backend container finishes booting.
+  } finally {
+    loginLoading.value = false;
+  }
+
+  if (loginForm.value.email === "admin@example.com" && loginForm.value.password === "password") {
+    finishSignIn("Admin User");
+    return;
+  }
+
+  loginError.value = "Invalid email or password";
+}
+
+function finishSignIn(userName: string) {
+  currentUser.value = userName;
+  isSignedIn.value = true;
+  window.localStorage.setItem(sessionKey, "true");
+  window.localStorage.setItem("productflow-vue-user", userName);
+}
+
+function signOut() {
+  isSignedIn.value = false;
+  window.localStorage.removeItem(sessionKey);
+  window.localStorage.removeItem("productflow-vue-user");
+}
+
+function openResourceAction(resource: Resource) {
+  activeResource.value = resource;
+  resourceForm.value = Object.fromEntries(resource.fields.map((field) => [field.name, ""])) as ResourceSample;
+  notice.value = "";
+}
+
+function saveResourceAction() {
+  const resource = activeResource.value;
+  if (!resource) return;
+
+  const nextSample = Object.fromEntries(
+    resource.fields.map((field) => [
+      field.name,
+      resourceForm.value[field.name]?.trim() || field.label + " " + (resource.samples.length + 1),
+    ]),
+  ) as ResourceSample;
+
+  resource.samples = [nextSample, ...resource.samples];
+  activeResource.value = null;
+  notice.value = t(resource.actionLabel || "Create") + " completed";
+}
+
+function loadSettings(): WorkspaceSettings {
+  const fallback = {
+    workspaceName: ${JSON.stringify(context.displayName)},
+    apiBaseUrl,
+    enabledModules: ${JSON.stringify(context.modules.join(", "))},
+  };
+  const stored = window.localStorage.getItem(settingsKey);
+  if (!stored) return fallback;
+
+  try {
+    return { ...fallback, ...JSON.parse(stored) };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveSettings() {
+  window.localStorage.setItem(settingsKey, JSON.stringify(settings.value));
+  settingsNotice.value = "Workspace settings saved";
+}
+
 setLanguage(language.value);
 </script>
 
 <template>
-  <main class="shell">
+  <main v-if="!isSignedIn" class="login-shell">
+    <section class="login-card">
+      <p class="eyebrow">ProductFlow</p>
+      <h1>${context.displayName}</h1>
+      <p class="muted">Sign in with the default admin account.</p>
+      <form class="form-grid" @submit.prevent="signIn">
+        <label class="field-label">
+          Email
+          <input v-model="loginForm.email" autocomplete="email" type="email" />
+        </label>
+        <label class="field-label">
+          Password
+          <input v-model="loginForm.password" autocomplete="current-password" type="password" />
+        </label>
+        <p v-if="loginError" class="error">{{ loginError }}</p>
+        <button type="submit" :disabled="loginLoading">{{ loginLoading ? "Signing in..." : "Sign in" }}</button>
+        <p class="muted">admin@example.com / password</p>
+      </form>
+    </section>
+  </main>
+
+  <main v-else class="shell">
     <aside class="sidebar">
       <p class="eyebrow">ProductFlow</p>
       <h1>${context.displayName}</h1>
@@ -1822,9 +1947,11 @@ setLanguage(language.value);
             <button :class="{ active: language === 'en' }" type="button" @click="setLanguage('en')">EN</button>
             <button :class="{ active: language === 'zh' }" type="button" @click="setLanguage('zh')">中文</button>
           </div>
-          <span class="badge">{{ t("Local demo") }}</span>
+          <span class="badge">{{ currentUser }}</span>
+          <button class="secondary-button" type="button" @click="signOut">Logout</button>
         </div>
       </header>
+      <p v-if="notice" class="notice">{{ notice }}</p>
 
       <section id="dashboard" class="metrics">
         <article v-for="metric in metrics" :key="metric.label" class="card">
@@ -1840,7 +1967,7 @@ setLanguage(language.value);
             <h3>{{ t(resource.title) }}</h3>
             <p>{{ t(resource.description) }}</p>
           </div>
-          <button>{{ t(resource.actionLabel || "Create") }}</button>
+          <button type="button" @click="openResourceAction(resource)">{{ t(resource.actionLabel || "Create") }}</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -1857,7 +1984,51 @@ setLanguage(language.value);
           </table>
         </div>
       </section>
+
+      <section id="settings" class="panel">
+        <div class="panel-header">
+          <div>
+            <h3>{{ t("Workspace settings") }}</h3>
+            <p>Save local prototype settings for this browser.</p>
+          </div>
+          <button type="button" @click="saveSettings">{{ t("Save settings") }}</button>
+        </div>
+        <form class="settings-grid" @submit.prevent="saveSettings">
+          <label class="field-label">
+            {{ t("Workspace name") }}
+            <input v-model="settings.workspaceName" />
+          </label>
+          <label class="field-label">
+            {{ t("API base URL") }}
+            <input v-model="settings.apiBaseUrl" />
+          </label>
+          <label class="field-label span-2">
+            {{ t("Enabled modules") }}
+            <input v-model="settings.enabledModules" />
+          </label>
+          <p v-if="settingsNotice" class="notice span-2">{{ settingsNotice }}</p>
+        </form>
+      </section>
     </section>
+
+    <div v-if="activeResource" class="modal-backdrop">
+      <section class="modal-card">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">{{ activeResource.title }}</p>
+            <h3>{{ t(activeResource.actionLabel || "Create") }}</h3>
+          </div>
+          <button class="secondary-button" type="button" @click="activeResource = null">Close</button>
+        </div>
+        <form class="form-grid" @submit.prevent="saveResourceAction">
+          <label v-for="field in activeResource.fields" :key="field.name" class="field-label">
+            {{ t(field.label) }}
+            <input v-model="resourceForm[field.name]" />
+          </label>
+          <button type="submit">{{ t(activeResource.actionLabel || "Create") }}</button>
+        </form>
+      </section>
+    </div>
   </main>
 </template>
 `;
@@ -1881,6 +2052,28 @@ function vueStyle() {
 body {
   margin: 0;
   background: #f5f7fb;
+}
+
+.login-shell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.login-card {
+  background: #ffffff;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(24, 33, 47, 0.08);
+  max-width: 420px;
+  padding: 24px;
+  width: 100%;
+}
+
+.login-card h1 {
+  margin: 8px 0;
 }
 
 .shell {
@@ -2043,6 +2236,72 @@ body {
   margin: 0 0 6px;
 }
 
+.form-grid,
+.settings-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 20px;
+}
+
+.field-label {
+  color: #49566a;
+  display: grid;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+input {
+  background: #ffffff;
+  border: 1px solid #d8dee9;
+  border-radius: 6px;
+  color: #18212f;
+  font: inherit;
+  height: 40px;
+  outline: none;
+  padding: 0 12px;
+  transition: border 160ms ease, box-shadow 160ms ease;
+}
+
+input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+.muted {
+  color: #687386;
+  font-size: 14px;
+}
+
+.error,
+.notice {
+  border-radius: 6px;
+  font-size: 14px;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.error {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+}
+
+.notice {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  margin-bottom: 16px;
+}
+
 button {
   background: #2563eb;
   border: 0;
@@ -2056,6 +2315,22 @@ button {
 
 button:hover {
   background: #1d4ed8;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button.secondary-button {
+  background: #ffffff;
+  border: 1px solid #d8dee9;
+  color: #49566a;
+}
+
+button.secondary-button:hover {
+  border-color: #2563eb;
+  color: #2563eb;
 }
 
 button:focus-visible {
@@ -2083,6 +2358,41 @@ th {
   background: #eef2f8;
   color: #49566a;
   font-weight: 700;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.42);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 20;
+}
+
+.modal-card {
+  background: #ffffff;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(24, 33, 47, 0.22);
+  max-width: 560px;
+  padding: 20px;
+  width: 100%;
+}
+
+.modal-header {
+  align-items: center;
+  border-bottom: 1px solid #d8dee9;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.modal-header h3 {
+  margin: 4px 0 0;
 }
 
 @media (max-width: 900px) {
@@ -2117,6 +2427,14 @@ th {
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: auto;
   }
 
   .metrics {
