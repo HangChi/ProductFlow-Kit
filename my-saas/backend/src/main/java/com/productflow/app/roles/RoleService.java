@@ -28,8 +28,17 @@ public class RoleService {
             GROUP BY r.role_key, r.name, r.description
             ORDER BY r.role_key
             """)
-            .query(RoleDto.class)
-            .list();
+            .query(RoleSummary.class)
+            .list()
+            .stream()
+            .map(role -> new RoleDto(
+                role.roleKey(),
+                role.name(),
+                role.description(),
+                role.memberCount(),
+                permissionsFor(role.roleKey())
+            ))
+            .toList();
     }
 
     @Transactional
@@ -67,7 +76,7 @@ public class RoleService {
     }
 
     private RoleDto getRole(String roleKey) {
-        return jdbc.sql("""
+        RoleSummary role = jdbc.sql("""
             SELECT r.role_key AS roleKey,
                    r.name,
                    r.description,
@@ -78,9 +87,28 @@ public class RoleService {
             GROUP BY r.role_key, r.name, r.description
             """)
             .param("roleKey", roleKey)
-            .query(RoleDto.class)
+            .query(RoleSummary.class)
             .optional()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+        return new RoleDto(
+            role.roleKey(),
+            role.name(),
+            role.description(),
+            role.memberCount(),
+            permissionsFor(role.roleKey())
+        );
+    }
+
+    private List<String> permissionsFor(String roleKey) {
+        return jdbc.sql("""
+            SELECT permission_key
+            FROM role_permissions
+            WHERE role_key = :roleKey
+            ORDER BY permission_key
+            """)
+            .param("roleKey", roleKey)
+            .query(String.class)
+            .list();
     }
 
     private void replacePermissions(String roleKey, List<String> permissions) {
@@ -111,7 +139,10 @@ public class RoleService {
         return roleKey.toLowerCase(Locale.ROOT);
     }
 
-    public record RoleDto(String roleKey, String name, String description, long memberCount) {
+    private record RoleSummary(String roleKey, String name, String description, long memberCount) {
+    }
+
+    public record RoleDto(String roleKey, String name, String description, long memberCount, List<String> permissions) {
     }
 
     public record SaveRoleRequest(
