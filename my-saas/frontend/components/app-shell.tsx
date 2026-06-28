@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Activity,
   Bot,
@@ -11,9 +12,12 @@ import {
   Mail,
   Settings,
   Shield,
+  LogOut,
   Users,
 } from "lucide-react";
 import { I18nText, LanguageProvider, LanguageToggle } from "@/components/i18n";
+import { getCurrentUser, getStoredUser, getToken, logout, type AuthenticatedUser } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -26,6 +30,49 @@ const navigation = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthenticatedUser | null>(() => getStoredUser());
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [sessionError, setSessionError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkSession() {
+      const token = getToken();
+      if (!token) {
+        router.replace(`/login?next=${encodeURIComponent(pathname || "/")}`);
+        return;
+      }
+
+      try {
+        const currentUser = await getCurrentUser();
+        if (!cancelled) {
+          setUser(currentUser);
+          setSessionError("");
+        }
+      } catch (caught) {
+        if (!cancelled) {
+          setSessionError(caught instanceof Error ? caught.message : "Authentication failed");
+          router.replace(`/login?next=${encodeURIComponent(pathname || "/")}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+      }
+    }
+
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router]);
+
+  async function handleLogout() {
+    await logout();
+    router.replace("/login");
+  }
 
   const linkClass = (href: string) => {
     const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -77,9 +124,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="mt-auto rounded-md border border-border bg-surface px-3 py-3 text-sm text-slate-700">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-                <span className="font-medium"><I18nText value={{ en: "Local demo", zh: "本地演示" }} /></span>
+                <span className="font-medium"><I18nText value={{ en: "Signed in", zh: "已登录" }} /></span>
               </div>
-              <p className="mt-1 text-xs text-muted">saas-admin</p>
+              <p className="mt-1 truncate text-xs text-muted">{user?.email ?? "Checking session..."}</p>
             </div>
           </div>
         </aside>
@@ -96,8 +143,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="flex shrink-0 items-center gap-3">
                     <LanguageToggle />
                     <div className="hidden rounded-md border border-border bg-white px-3 py-2 text-sm text-slate-700 shadow-sm sm:block">
-                      <I18nText value={{ en: "Local demo", zh: "本地演示" }} />
+                      {user?.name ?? <I18nText value={{ en: "Checking session", zh: "正在检查会话" }} />}
                     </div>
+                    <Button type="button" variant="secondary" onClick={handleLogout}>
+                      <LogOut size={16} aria-hidden="true" />
+                      <I18nText value={{ en: "Logout", zh: "退出" }} />
+                    </Button>
                   </div>
                 </div>
                 <nav className="flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Primary">
@@ -119,7 +170,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </nav>
               </div>
             </header>
-            {children}
+            {checkingSession ? (
+              <div className="rounded-md border border-border bg-white px-4 py-3 text-sm text-muted shadow-sm">
+                <I18nText value={{ en: "Checking session...", zh: "正在检查会话..." }} />
+              </div>
+            ) : sessionError ? (
+              <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {sessionError}
+              </div>
+            ) : (
+              children
+            )}
           </div>
         </main>
       </div>
