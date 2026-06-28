@@ -1745,12 +1745,28 @@ function vueApp(context) {
 import { ref } from "vue";
 
 type Language = "en" | "zh";
+type Metric = { label: string; value: string; change: string };
+type ResourceField = { name: string; label: string };
+type ResourceSample = Record<string, string>;
+type Resource = {
+  id: string;
+  title: string;
+  navLabel?: string;
+  description: string;
+  apiPath: string;
+  javaPackage: string;
+  className: string;
+  table: string;
+  actionLabel?: string;
+  fields: ResourceField[];
+  samples: ResourceSample[];
+};
 
 const languageMode = ${JSON.stringify(context.language)};
 const defaultLanguage = ${JSON.stringify(frontendDefaultLanguage(context))} as Language;
 const zhDictionary: Record<string, string> = ${JSON.stringify(zhDictionary(), null, 2)};
-const metrics = ${JSON.stringify(blueprintMetrics(context), null, 2)};
-const resources = ${JSON.stringify(resources, null, 2)};
+const metrics: Metric[] = ${JSON.stringify(blueprintMetrics(context), null, 2)};
+const resources: Resource[] = ${JSON.stringify(resources, null, 2)};
 const language = ref<Language>(defaultLanguage);
 
 if (languageMode === "bilingual") {
@@ -1772,6 +1788,10 @@ function setLanguage(nextLanguage: Language) {
 
 function t(value: string) {
   return language.value === "zh" ? zhDictionary[value] ?? value : value;
+}
+
+function sampleValue(sample: ResourceSample, fieldName: string) {
+  return sample[fieldName] ?? "";
 }
 
 setLanguage(language.value);
@@ -1831,7 +1851,7 @@ setLanguage(language.value);
             </thead>
             <tbody>
               <tr v-for="sample in resource.samples" :key="JSON.stringify(sample)">
-                <td v-for="field in resource.fields" :key="field.name">{{ sample[field.name] }}</td>
+                <td v-for="field in resource.fields" :key="field.name">{{ sampleValue(sample, field.name) }}</td>
               </tr>
             </tbody>
           </table>
